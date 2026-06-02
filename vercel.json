@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "public": true,
+  "outputDirectory": "public",
+  "buildCommand": null,
+  "routes": [
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
