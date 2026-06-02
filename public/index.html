@@ -139,11 +139,19 @@
   .mk-del:hover { color: #e63946; }
   .mk-empty { color: #bbb; font-size: 13px; text-align: center; padding: 20px 0; }
 
-  /* Calibrate panel */
-  #calibrate-panel { max-width: 300px; }
-  #calibrate-panel .cal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  #calibrate-panel .cal-label { font-size: 10px; color: #999; margin: 6px 0 2px; }
-  #calibrate-panel .cal-hint { font-size: 11px; color: #888; line-height: 1.4; margin-bottom: 12px; }
+  /* Align panel */
+  #align-panel { max-width: 260px; }
+  #align-panel .al-hint { font-size: 12px; color: #666; line-height: 1.55; margin-bottom: 14px; }
+  #align-panel .al-hint strong { color: #1a1a2e; }
+
+  /* Corner drag handle icons */
+  .align-handle {
+    width: 26px; height: 26px;
+    background: #1a1a2e; border: 2.5px solid #f0c060; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #f0c060;
+    cursor: move; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
 
   /* Toast */
   #toast {
@@ -246,36 +254,18 @@
   <div id="mk-list"></div>
 </div>
 
-<!-- Calibration panel -->
-<div class="side-panel" id="calibrate-panel">
-  <h3>Overlay Alignment</h3>
-  <p class="cal-hint">Adjust the geographic bounds until the SVG buildings line up with the satellite imagery. Changes are saved automatically.</p>
-  <div class="cal-label">South-West corner</div>
-  <div class="cal-row">
-    <div>
-      <label>Latitude (°N)</label>
-      <input type="number" id="cal-sw-lat" step="0.0001" placeholder="57.7026">
-    </div>
-    <div>
-      <label>Longitude (°E)</label>
-      <input type="number" id="cal-sw-lng" step="0.0001" placeholder="11.9403">
-    </div>
-  </div>
-  <div class="cal-label">North-East corner</div>
-  <div class="cal-row">
-    <div>
-      <label>Latitude (°N)</label>
-      <input type="number" id="cal-ne-lat" step="0.0001" placeholder="57.7174">
-    </div>
-    <div>
-      <label>Longitude (°E)</label>
-      <input type="number" id="cal-ne-lng" step="0.0001" placeholder="11.9597">
-    </div>
-  </div>
+<!-- Visual alignment panel -->
+<div class="side-panel" id="align-panel">
+  <h3>Align Overlay</h3>
+  <p class="al-hint">
+    Drag the <strong>SW</strong> and <strong>NE</strong> corner handles on the map
+    to line up the buildings with satellite imagery.<br><br>
+    Turn on <strong>Satellite</strong> mode first to see the tiles underneath.
+  </p>
   <div class="pnl-actions">
-    <button class="btn-save" id="cal-apply">Apply</button>
-    <button class="btn-del" id="cal-reset">Reset</button>
-    <button class="btn-cls" id="cal-close">✕</button>
+    <button class="btn-save" id="align-save">Save</button>
+    <button class="btn-del" id="align-reset">Reset</button>
+    <button class="btn-cls" id="align-cancel">Cancel</button>
   </div>
 </div>
 
@@ -365,13 +355,6 @@ function createOverlay(svgEl, bounds) {
     interactive: true
   });
   svgOverlay.addTo(map);
-}
-
-function updateOverlayBounds(bounds) {
-  if (!svgOverlay || !svgElement) return;
-  state.bounds = bounds;
-  saveState();
-  createOverlay(svgElement, bounds);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -628,58 +611,88 @@ document.getElementById('btn-satellite').addEventListener('click', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Calibration / alignment
+// Visual alignment
 // ─────────────────────────────────────────────────────────────
-function openCalibrate() {
-  closePanels();
-  const { sw, ne } = state.bounds;
-  document.getElementById('cal-sw-lat').value = sw[0];
-  document.getElementById('cal-sw-lng').value = sw[1];
-  document.getElementById('cal-ne-lat').value = ne[0];
-  document.getElementById('cal-ne-lng').value = ne[1];
-  document.getElementById('calibrate-panel').style.display = 'block';
+let alignActive = false;
+let alignHandles = [];   // [swMarker, neMarker]
+let alignPending = null; // { sw, ne } being previewed
+
+function makeHandleIcon(label) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="align-handle">${label}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13]
+  });
+}
+
+function enterAlignMode() {
+  if (!svgOverlay) return;
+  if (alignActive) return;
+  alignActive = true;
+  alignPending = { sw: [...state.bounds.sw], ne: [...state.bounds.ne] };
+
+  svgOverlay.setOpacity(0.5);
   document.getElementById('btn-calibrate').classList.add('active');
+
+  const swM = L.marker(alignPending.sw, {
+    draggable: true, icon: makeHandleIcon('SW'), zIndexOffset: 3000
+  }).addTo(map);
+
+  const neM = L.marker(alignPending.ne, {
+    draggable: true, icon: makeHandleIcon('NE'), zIndexOffset: 3000
+  }).addTo(map);
+
+  function onDrag() {
+    const sw = swM.getLatLng();
+    const ne = neM.getLatLng();
+    alignPending = { sw: [sw.lat, sw.lng], ne: [ne.lat, ne.lng] };
+    svgOverlay.setBounds(L.latLngBounds(alignPending.sw, alignPending.ne));
+  }
+
+  swM.on('drag', onDrag);
+  neM.on('drag', onDrag);
+  alignHandles = [swM, neM];
+
+  closePanels();
+  document.getElementById('align-panel').style.display = 'block';
+}
+
+function exitAlignMode(save) {
+  if (save && alignPending) {
+    state.bounds = alignPending;
+    saveState();
+    showToast('Alignment saved');
+  } else if (svgOverlay) {
+    svgOverlay.setBounds(L.latLngBounds(state.bounds.sw, state.bounds.ne));
+  }
+  alignHandles.forEach(m => m.remove());
+  alignHandles = [];
+  alignPending = null;
+  alignActive = false;
+  if (svgOverlay) svgOverlay.setOpacity(1);
+  closePanels();
 }
 
 document.getElementById('btn-calibrate').addEventListener('click', () => {
-  if (document.getElementById('calibrate-panel').style.display !== 'none') {
-    closePanels();
-  } else {
-    openCalibrate();
-  }
+  if (alignActive) { exitAlignMode(false); } else { enterAlignMode(); }
 });
 
-document.getElementById('cal-apply').addEventListener('click', () => {
-  const sw = [
-    parseFloat(document.getElementById('cal-sw-lat').value),
-    parseFloat(document.getElementById('cal-sw-lng').value)
-  ];
-  const ne = [
-    parseFloat(document.getElementById('cal-ne-lat').value),
-    parseFloat(document.getElementById('cal-ne-lng').value)
-  ];
-  if (sw.some(isNaN) || ne.some(isNaN)) { showToast('Invalid coordinates'); return; }
-  updateOverlayBounds({ sw, ne });
-  showToast('Overlay bounds updated');
+document.getElementById('align-save').addEventListener('click',   () => exitAlignMode(true));
+document.getElementById('align-reset').addEventListener('click',  () => {
+  alignPending = { sw: [...DEFAULT_BOUNDS.sw], ne: [...DEFAULT_BOUNDS.ne] };
+  alignHandles[0].setLatLng(alignPending.sw);
+  alignHandles[1].setLatLng(alignPending.ne);
+  svgOverlay.setBounds(L.latLngBounds(alignPending.sw, alignPending.ne));
+  showToast('Reset to defaults — drag to fine-tune, then Save');
 });
-
-document.getElementById('cal-reset').addEventListener('click', () => {
-  updateOverlayBounds(DEFAULT_BOUNDS);
-  const { sw, ne } = DEFAULT_BOUNDS;
-  document.getElementById('cal-sw-lat').value = sw[0];
-  document.getElementById('cal-sw-lng').value = sw[1];
-  document.getElementById('cal-ne-lat').value = ne[0];
-  document.getElementById('cal-ne-lng').value = ne[1];
-  showToast('Reset to defaults');
-});
-
-document.getElementById('cal-close').addEventListener('click', closePanels);
+document.getElementById('align-cancel').addEventListener('click', () => exitAlignMode(false));
 
 // ─────────────────────────────────────────────────────────────
 // Panel helpers
 // ─────────────────────────────────────────────────────────────
 function closePanels() {
-  ['bld-panel', 'mk-panel', 'calibrate-panel'].forEach(id => {
+  ['bld-panel', 'mk-panel', 'align-panel'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
   document.getElementById('btn-calibrate').classList.remove('active');
