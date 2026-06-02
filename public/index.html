@@ -30,22 +30,22 @@
     pointer-events: none;
   }
   /* Only building groups need pointer events — reduces hit-testing on 95k paths */
-  .lundby-svg-overlay path { pointer-events: none; }
+  .lundby-svg-overlay path, .leaflet-overlay-pane path { pointer-events: none; }
   .building-group { pointer-events: auto; }
 
   /* Infra (gray text outlines) hidden by default — too noisy at normal zoom */
-  .lundby-svg-overlay .infra { display: none; }
+  .infra { display: none; }
 
-  /* Infrastructure lines: slightly transparent by default */
-  .lundby-svg-overlay path:not(.building):not(.infra) {
+  /* Infrastructure lines: fast rendering */
+  .leaflet-overlay-pane path:not(.building):not(.infra) {
     shape-rendering: optimizeSpeed;
   }
 
   /* Satellite mode: hide all non-building paths */
-  body.satellite-mode .lundby-svg-overlay path:not(.building) {
+  body.satellite-mode .leaflet-overlay-pane path:not(.building) {
     display: none;
   }
-  body.satellite-mode .lundby-svg-overlay .building {
+  body.satellite-mode .leaflet-overlay-pane .building {
     fill-opacity: 0.65 !important;
   }
 
