@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lundby Volvo — Interactive Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #f8f8f6;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+  }
+
+  /* ── Map ── */
+  #leaflet-map {
+    position: fixed; inset: 0;
+    z-index: 0;
+  }
+
+  /* Hide Leaflet attribution branding */
+  .leaflet-control-attribution { font-size: 9px; opacity: 0.6; }
+
+  /* The SVG overlay inside Leaflet — panning handled by Leaflet */
+  .lundby-svg-overlay {
+    pointer-events: none;        /* overlay container */
+  }
+  .lundby-svg-overlay path { pointer-events: auto; }
+
+  /* Infrastructure lines hidden in satellite mode */
+  body.satellite-mode .lundby-svg-overlay path:not(.building):not(.infra) {
+    display: none;
+  }
+  body.satellite-mode .lundby-svg-overlay .building {
+    fill-opacity: 0.65 !important;
+  }
+  /* In clean map mode, show full SVG but with a light white backing */
+  body.clean-mode .lundby-svg-overlay path:not(.building):not(.infra) {
+    stroke-opacity: 0.35;
+  }
+
+  /* Building hover / selection */
+  .building-group { cursor: pointer; }
+  .building-group:hover .building {
+    fill: rgb(255, 200, 60) !important;
+    stroke: rgb(180, 100, 0) !important;
+  }
+  .building-group.selected .building {
+    fill: rgb(255, 140, 0) !important;
+    stroke: rgb(160, 60, 0) !important;
+  }
+
+  /* ── Loading screen ── */
+  #loading {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #1a1a2e; color: #eee; z-index: 9999; gap: 16px;
+    transition: opacity 0.4s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 4px solid #333; border-top-color: #f0c060;
+    border-radius: 50%; animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toolbar ── */
+  #toolbar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 4px; align-items: center;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 12px; padding: 6px 10px;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  }
+
+  .tbtn {
+    display: flex; align-items: center; gap: 5px;
+    background: none; border: 1px solid transparent;
+    border-radius: 8px; color: #444; font-size: 12px; font-weight: 500;
+    padding: 5px 10px; cursor: pointer; transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .tbtn:hover { background: #f5f5f5; color: #111; border-color: #ddd; }
+  .tbtn.active { background: #f0c060; color: #1a1a2e; border-color: #e8a800; font-weight: 700; }
+  .tbtn.danger.active { background: #e63946; color: white; border-color: #c0192a; }
+  .tbtn svg { flex-shrink: 0; }
+
+  .tsep { width: 1px; height: 22px; background: #e0e0e0; margin: 0 2px; }
+
+  /* ── Side panel ── */
+  .side-panel {
+    position: fixed; right: 16px; top: 16px;
+    width: 280px; max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: rgba(255,255,255,0.97);
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 12px; padding: 16px;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: none; color: #222;
+  }
+  .side-panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 12px; }
+  .side-panel label { display: block; font-size: 11px; color: #666; margin: 8px 0 3px; }
+  .side-panel input, .side-panel textarea, .side-panel select {
+    width: 100%; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 13px; padding: 6px 8px; outline: none; font-family: inherit;
+    transition: border-color 0.15s; background: #fafafa;
+  }
+  .side-panel input:focus, .side-panel textarea:focus { border-color: #f0c060; background: #fff; }
+  .side-panel textarea { resize: vertical; min-height: 64px; }
+  .pnl-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-save { flex: 1; padding: 7px; background: #f0c060; color: #1a1a2e; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .btn-del  { padding: 7px 10px; background: #fee2e2; color: #c0192a; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-cls  { padding: 7px 10px; background: #f3f4f6; color: #555; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+
+  /* Marker list */
+  .mk-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;
+  }
+  .mk-item:hover .mk-name { color: #c08000; }
+  .mk-dot { width: 10px; height: 10px; border-radius: 50%; background: #e63946; flex-shrink: 0; }
+  .mk-name { flex: 1; font-size: 13px; }
+  .mk-del { background: none; border: none; color: #bbb; cursor: pointer; font-size: 14px; padding: 0 4px; line-height: 1; }
+  .mk-del:hover { color: #e63946; }
+  .mk-empty { color: #bbb; font-size: 13px; text-align: center; padding: 20px 0; }
+
+  /* Calibrate panel */
+  #calibrate-panel { max-width: 300px; }
+  #calibrate-panel .cal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #calibrate-panel .cal-label { font-size: 10px; color: #999; margin: 6px 0 2px; }
+  #calibrate-panel .cal-hint { font-size: 11px; color: #888; line-height: 1.4; margin-bottom: 12px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(26,26,46,0.92); color: #eee;
+    font-size: 13px; padding: 9px 20px; border-radius: 8px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 5000;
+  }
+  #toast.show { opacity: 1; }
+
+  /* Leaflet marker label */
+  .lbl-tooltip {
+    background: #1a1a2e; color: #eee;
+    border: 1px solid #f0c060; border-radius: 5px;
+    font-size: 12px; font-weight: 600; padding: 3px 7px;
+    white-space: nowrap;
+  }
+  .lbl-tooltip::before { display: none; }
+
+  /* Layer controls override for cleaner look */
+  .leaflet-control-layers { border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Loading Lundby map…</span>
+  <span style="font-size:12px;color:#555">Parsing 25 MB of vector data</span>
+</div>
+
+<div id="leaflet-map"></div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <button class="tbtn active" id="btn-pan" title="Pan mode (P)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>
+    </svg>Pan
+  </button>
+
+  <button class="tbtn" id="btn-marker" title="Add marker (M)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+    </svg>Marker
+  </button>
+
+  <button class="tbtn" id="btn-markers-list">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+      <line x1="8" y1="18" x2="21" y2="18"/>
+      <circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/>
+      <circle cx="4" cy="18" r="1" fill="currentColor"/>
+    </svg>List
+  </button>
+
+  <div class="tsep"></div>
+
+  <!-- Satellite toggle -->
+  <button class="tbtn" id="btn-satellite" title="Toggle satellite (S)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+    </svg>Satellite
+  </button>
+
+  <button class="tbtn" id="btn-calibrate" title="Adjust overlay alignment">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M12 2v2M4.93 4.93l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M12 20v2m5.66-.93l-1.41-1.41"/>
+    </svg>Align
+  </button>
+
+  <div class="tsep"></div>
+
+  <button class="tbtn" id="btn-fit" title="Fit to view (F)">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>Fit
+  </button>
+</div>
+
+<!-- Building annotation panel -->
+<div class="side-panel" id="bld-panel">
+  <h3>Building</h3>
+  <label>Name / Code</label>
+  <input type="text" id="bld-name" placeholder="e.g. AB, Workshop…">
+  <label>Notes</label>
+  <textarea id="bld-notes" placeholder="Add notes…"></textarea>
+  <div class="pnl-actions">
+    <button class="btn-save" id="bld-save">Save</button>
+    <button class="btn-del" id="bld-del" style="display:none">Clear</button>
+    <button class="btn-cls" id="bld-close">✕</button>
+  </div>
+</div>
+
+<!-- Marker list panel -->
+<div class="side-panel" id="mk-panel">
+  <h3>Saved Markers</h3>
+  <div id="mk-list"></div>
+</div>
+
+<!-- Calibration panel -->
+<div class="side-panel" id="calibrate-panel">
+  <h3>Overlay Alignment</h3>
+  <p class="cal-hint">Adjust the geographic bounds until the SVG buildings line up with the satellite imagery. Changes are saved automatically.</p>
+  <div class="cal-label">South-West corner</div>
+  <div class="cal-row">
+    <div>
+      <label>Latitude (°N)</label>
+      <input type="number" id="cal-sw-lat" step="0.0001" placeholder="57.7026">
+    </div>
+    <div>
+      <label>Longitude (°E)</label>
+      <input type="number" id="cal-sw-lng" step="0.0001" placeholder="11.9403">
+    </div>
+  </div>
+  <div class="cal-label">North-East corner</div>
+  <div class="cal-row">
+    <div>
+      <label>Latitude (°N)</label>
+      <input type="number" id="cal-ne-lat" step="0.0001" placeholder="57.7174">
+    </div>
+    <div>
+      <label>Longitude (°E)</label>
+      <input type="number" id="cal-ne-lng" step="0.0001" placeholder="11.9597">
+    </div>
+  </div>
+  <div class="pnl-actions">
+    <button class="btn-save" id="cal-apply">Apply</button>
+    <button class="btn-del" id="cal-reset">Reset</button>
+    <button class="btn-cls" id="cal-close">✕</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// State & storage
+// ─────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'lundby_v3';
+
+const DEFAULT_BOUNDS = {
+  sw: [57.7026, 11.9403],
+  ne: [57.7174, 11.9597]
+};
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return s || {};
+  } catch { return {}; }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+const state = loadState();
+if (!state.markers)   state.markers   = [];
+if (!state.buildings) state.buildings = {};
+if (!state.bounds)    state.bounds    = DEFAULT_BOUNDS;
+if (!state.view)      state.view      = null;
+
+// ─────────────────────────────────────────────────────────────
+// Leaflet map setup
+// ─────────────────────────────────────────────────────────────
+const map = L.map('leaflet-map', {
+  center: [
+    (state.bounds.sw[0] + state.bounds.ne[0]) / 2,
+    (state.bounds.sw[1] + state.bounds.ne[1]) / 2
+  ],
+  zoom: state.view ? state.view.zoom : 16,
+  zoomControl: false
+});
+
+if (state.view) map.setView([state.view.lat, state.view.lng], state.view.zoom);
+
+// Tile layers
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 21
+});
+
+const satLayer = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '© Esri World Imagery', maxZoom: 21 }
+);
+
+const blankLayer = L.tileLayer('', { attribution: '' });
+blankLayer.addTo(map); // default: no background tiles
+
+// Zoom controls (custom position)
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+// Save view on move
+map.on('moveend zoomend', () => {
+  const c = map.getCenter();
+  state.view = { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
+  saveState();
+});
+
+// ─────────────────────────────────────────────────────────────
+// SVG overlay
+// ─────────────────────────────────────────────────────────────
+let svgOverlay = null;
+let svgElement = null;
+let selectedBldId = null;
+
+function createOverlay(svgEl, bounds) {
+  if (svgOverlay) { map.removeLayer(svgOverlay); svgOverlay = null; }
+  const latLngBounds = L.latLngBounds(bounds.sw, bounds.ne);
+  svgOverlay = L.svgOverlay(svgEl, latLngBounds, {
+    opacity: 1,
+    interactive: true
+  });
+  svgOverlay.addTo(map);
+}
+
+function updateOverlayBounds(bounds) {
+  if (!svgOverlay || !svgElement) return;
+  state.bounds = bounds;
+  saveState();
+  createOverlay(svgElement, bounds);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Building grouping
+// ─────────────────────────────────────────────────────────────
+function groupBuildings(svgDoc) {
+  const paths = Array.from(svgDoc.querySelectorAll('.building'));
+  if (!paths.length) return;
+
+  const boxes = [];
+  paths.forEach(path => {
+    try {
+      const bb = path.getBBox();
+      if (bb.width < 0.5 && bb.height < 0.5) return;
+      boxes.push({ path, bb });
+    } catch (e) {}
+  });
+
+  // Union-Find clustering
+  const par = boxes.map((_, i) => i);
+  const find = i => par[i] === i ? i : (par[i] = find(par[i]));
+  const union = (i, j) => { par[find(i)] = find(j); };
+
+  const PAD = 8;
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i].bb, b = boxes[j].bb;
+      if (a.x - PAD < b.x + b.width  &&
+          a.x + a.width + PAD > b.x  &&
+          a.y - PAD < b.y + b.height &&
+          a.y + a.height + PAD > b.y) union(i, j);
+    }
+  }
+
+  const groups = new Map();
+  boxes.forEach((item, i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(item);
+  });
+
+  let bid = 0;
+  groups.forEach(items => {
+    const g = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const id = 'bg-' + (bid++);
+    g.setAttribute('class', 'building-group');
+    g.setAttribute('id', id);
+
+    let cx = 0, cy = 0;
+    items.forEach(({ bb }) => { cx += bb.x + bb.width/2; cy += bb.y + bb.height/2; });
+    cx /= items.length; cy /= items.length;
+    g.dataset.cx = cx.toFixed(1);
+    g.dataset.cy = cy.toFixed(1);
+
+    const saved = state.buildings[id];
+    if (saved?.name) g.dataset.name = saved.name;
+    if (saved?.notes) g.dataset.notes = saved.notes;
+
+    const parent = items[0].path.parentNode;
+    items.forEach(({ path }) => g.appendChild(path));
+    parent.appendChild(g);
+
+    g.addEventListener('click', e => {
+      e.stopPropagation();
+      selectBuilding(id, g);
+    });
+  });
+
+  console.log(`Grouped into ${bid} buildings`);
+}
+
+function selectBuilding(id, g) {
+  if (selectedBldId) {
+    document.getElementById(selectedBldId)?.classList.remove('selected');
+  }
+  selectedBldId = id;
+  g.classList.add('selected');
+
+  const saved = state.buildings[id] || {};
+  document.getElementById('bld-name').value  = saved.name  || '';
+  document.getElementById('bld-notes').value = saved.notes || '';
+  document.getElementById('bld-del').style.display = saved.name ? 'block' : 'none';
+  closePanels();
+  document.getElementById('bld-panel').style.display = 'block';
+}
+
+document.getElementById('bld-save').addEventListener('click', () => {
+  if (!selectedBldId) return;
+  const name  = document.getElementById('bld-name').value.trim();
+  const notes = document.getElementById('bld-notes').value.trim();
+  state.buildings[selectedBldId] = { name, notes };
+  saveState();
+  document.getElementById('bld-del').style.display = name ? 'block' : 'none';
+  showToast('Saved');
+});
+
+document.getElementById('bld-del').addEventListener('click', () => {
+  if (!selectedBldId) return;
+  delete state.buildings[selectedBldId];
+  saveState();
+  document.getElementById(selectedBldId)?.classList.remove('selected');
+  closePanels(); showToast('Cleared');
+});
+
+document.getElementById('bld-close').addEventListener('click', closePanels);
+
+// Click on map background deselects building
+map.on('click', () => {
+  if (selectedBldId) {
+    document.getElementById(selectedBldId)?.classList.remove('selected');
+    selectedBldId = null;
+  }
+  closePanels();
+});
+
+// ─────────────────────────────────────────────────────────────
+// Markers
+// ─────────────────────────────────────────────────────────────
+const leafletMarkers = new Map(); // id → L.marker
+
+function renderMarker(m) {
+  if (leafletMarkers.has(m.id)) {
+    leafletMarkers.get(m.id).remove();
+  }
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:22px;height:22px;
+      background:${m.color||'#e63946'};
+      border:2.5px solid white;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    "></div>`,
+    iconAnchor: [11, 22],
+    iconSize:   [22, 22]
+  });
+
+  const mk = L.marker([m.lat, m.lng], { icon, draggable: true })
+    .addTo(map)
+    .bindTooltip(m.label, { permanent: true, direction: 'right', className: 'lbl-tooltip', offset: [6, -10] });
+
+  mk.on('dragend', () => {
+    const pos = mk.getLatLng();
+    m.lat = pos.lat; m.lng = pos.lng;
+    saveState(); renderMarkersList();
+  });
+  mk.on('contextmenu', () => {
+    if (confirm(`Delete marker "${m.label}"?`)) deleteMarker(m.id);
+  });
+
+  leafletMarkers.set(m.id, mk);
+}
+
+function deleteMarker(id) {
+  state.markers = state.markers.filter(m => m.id !== id);
+  leafletMarkers.get(id)?.remove();
+  leafletMarkers.delete(id);
+  saveState(); renderMarkersList(); showToast('Marker deleted');
+}
+
+function renderMarkersList() {
+  const el = document.getElementById('mk-list');
+  if (!state.markers.length) {
+    el.innerHTML = '<div class="mk-empty">No markers yet.<br>Use "Marker" tool to place one.</div>';
+    return;
+  }
+  el.innerHTML = state.markers.map(m => `
+    <div class="mk-item" data-id="${m.id}">
+      <div class="mk-dot" style="background:${m.color}"></div>
+      <div class="mk-name">${esc(m.label)}</div>
+      <button class="mk-del" data-del="${m.id}">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.mk-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.dataset.del) return;
+      const m = state.markers.find(x => x.id === item.dataset.id);
+      if (m) map.flyTo([m.lat, m.lng], Math.max(map.getZoom(), 17));
+    });
+    item.querySelector('[data-del]').addEventListener('click', e => {
+      e.stopPropagation();
+      deleteMarker(e.target.dataset.del);
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tool switching
+// ─────────────────────────────────────────────────────────────
+let currentTool = 'pan';
+let satelliteOn = false;
+
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-pan').classList.toggle('active', tool === 'pan');
+  document.getElementById('btn-marker').classList.toggle('active', tool === 'marker');
+
+  if (tool === 'marker') {
+    map.getContainer().style.cursor = 'crosshair';
+    closePanels();
+  } else {
+    map.getContainer().style.cursor = '';
+  }
+}
+
+map.on('click', e => {
+  if (currentTool !== 'marker') return;
+  const label = window.prompt('Marker label:');
+  if (!label) { setTool('pan'); return; }
+  const id = 'mk-' + Date.now();
+  const m = { id, lat: e.latlng.lat, lng: e.latlng.lng, label: label.trim() || 'Marker', color: '#e63946' };
+  state.markers.push(m);
+  saveState();
+  renderMarker(m);
+  setTool('pan');
+  showToast(`Marker "${m.label}" placed`);
+});
+
+// ─────────────────────────────────────────────────────────────
+// Satellite toggle
+// ─────────────────────────────────────────────────────────────
+document.getElementById('btn-satellite').addEventListener('click', () => {
+  satelliteOn = !satelliteOn;
+  document.getElementById('btn-satellite').classList.toggle('active', satelliteOn);
+  document.body.classList.toggle('satellite-mode', satelliteOn);
+
+  if (satelliteOn) {
+    blankLayer.remove();
+    osmLayer.remove();
+    satLayer.addTo(map);
+    showToast('Satellite imagery on — adjust Align if needed');
+  } else {
+    satLayer.remove();
+    osmLayer.remove();
+    blankLayer.addTo(map);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// Calibration / alignment
+// ─────────────────────────────────────────────────────────────
+function openCalibrate() {
+  closePanels();
+  const { sw, ne } = state.bounds;
+  document.getElementById('cal-sw-lat').value = sw[0];
+  document.getElementById('cal-sw-lng').value = sw[1];
+  document.getElementById('cal-ne-lat').value = ne[0];
+  document.getElementById('cal-ne-lng').value = ne[1];
+  document.getElementById('calibrate-panel').style.display = 'block';
+  document.getElementById('btn-calibrate').classList.add('active');
+}
+
+document.getElementById('btn-calibrate').addEventListener('click', () => {
+  if (document.getElementById('calibrate-panel').style.display !== 'none') {
+    closePanels();
+  } else {
+    openCalibrate();
+  }
+});
+
+document.getElementById('cal-apply').addEventListener('click', () => {
+  const sw = [
+    parseFloat(document.getElementById('cal-sw-lat').value),
+    parseFloat(document.getElementById('cal-sw-lng').value)
+  ];
+  const ne = [
+    parseFloat(document.getElementById('cal-ne-lat').value),
+    parseFloat(document.getElementById('cal-ne-lng').value)
+  ];
+  if (sw.some(isNaN) || ne.some(isNaN)) { showToast('Invalid coordinates'); return; }
+  updateOverlayBounds({ sw, ne });
+  showToast('Overlay bounds updated');
+});
+
+document.getElementById('cal-reset').addEventListener('click', () => {
+  updateOverlayBounds(DEFAULT_BOUNDS);
+  const { sw, ne } = DEFAULT_BOUNDS;
+  document.getElementById('cal-sw-lat').value = sw[0];
+  document.getElementById('cal-sw-lng').value = sw[1];
+  document.getElementById('cal-ne-lat').value = ne[0];
+  document.getElementById('cal-ne-lng').value = ne[1];
+  showToast('Reset to defaults');
+});
+
+document.getElementById('cal-close').addEventListener('click', closePanels);
+
+// ─────────────────────────────────────────────────────────────
+// Panel helpers
+// ─────────────────────────────────────────────────────────────
+function closePanels() {
+  ['bld-panel', 'mk-panel', 'calibrate-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('btn-calibrate').classList.remove('active');
+  document.getElementById('btn-markers-list').classList.remove('active');
+}
+
+document.getElementById('btn-markers-list').addEventListener('click', () => {
+  const panel = document.getElementById('mk-panel');
+  if (panel.style.display !== 'none') { closePanels(); return; }
+  closePanels();
+  renderMarkersList();
+  panel.style.display = 'block';
+  document.getElementById('btn-markers-list').classList.add('active');
+});
+
+// ─────────────────────────────────────────────────────────────
+// Fit / zoom
+// ─────────────────────────────────────────────────────────────
+document.getElementById('btn-fit').addEventListener('click', () => {
+  map.fitBounds(L.latLngBounds(state.bounds.sw, state.bounds.ne), { padding: [20, 20] });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Keyboard shortcuts
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  if (e.key === 'p' || e.key === 'P') setTool('pan');
+  if (e.key === 'm' || e.key === 'M') setTool('marker');
+  if (e.key === 'f' || e.key === 'F') document.getElementById('btn-fit').click();
+  if (e.key === 's' || e.key === 'S') document.getElementById('btn-satellite').click();
+  if (e.key === 'Escape') { closePanels(); setTool('pan'); }
+});
+
+// ─────────────────────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Load SVG & initialise
+// ─────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const resp = await fetch('lundby_map.svg');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+
+    const parser = new DOMParser();
+    const doc    = parser.parseFromString(text, 'image/svg+xml');
+    svgElement   = doc.documentElement;
+
+    // Remove fixed dimensions so Leaflet can size the overlay correctly
+    svgElement.removeAttribute('width');
+    svgElement.removeAttribute('height');
+    svgElement.setAttribute('preserveAspectRatio', 'none');
+
+    // Append to a temporary hidden container so getBBox() works
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:842px;height:1191px;';
+    tmp.appendChild(svgElement);
+    document.body.appendChild(tmp);
+
+    // Wait for render
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    groupBuildings(svgElement);
+
+    // Move SVG from temp container — createOverlay will re-parent it
+    tmp.removeChild(svgElement);
+    document.body.removeChild(tmp);
+
+    createOverlay(svgElement, state.bounds);
+
+    // Restore saved markers
+    state.markers.forEach(renderMarker);
+
+    // Fit view
+    if (!state.view) {
+      map.fitBounds(L.latLngBounds(state.bounds.sw, state.bounds.ne), { padding: [30, 30] });
+    }
+
+    document.getElementById('loading').classList.add('hidden');
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+    setTool('pan');
+    showToast('Map ready — click buildings to annotate');
+  } catch (err) {
+    document.getElementById('loading').innerHTML = `
+      <div style="color:#e63946;font-size:16px">Failed to load map</div>
+      <div style="color:#999;font-size:13px;margin-top:8px">${err.message}</div>
+      <div style="color:#777;font-size:12px;margin-top:6px">Serve this folder with a local HTTP server,<br>e.g. <code>python3 -m http.server 8080</code></div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
