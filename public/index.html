@@ -286,13 +286,20 @@ const DEFAULT_BOUNDS = {
   ne: [57.7174, 11.9597]
 };
 
-function loadState() {
+// Safe localStorage wrapper (Tracking Prevention may block in cross-site contexts)
+const store = (() => {
   try {
-    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return s || {};
-  } catch { return {}; }
+    localStorage.setItem('_t', '1'); localStorage.removeItem('_t');
+    return { get: k => localStorage.getItem(k), set: (k, v) => localStorage.setItem(k, v) };
+  } catch {
+    const m = {}; return { get: k => m[k] ?? null, set: (k, v) => { m[k] = v; } };
+  }
+})();
+
+function loadState() {
+  try { return JSON.parse(store.get(STORAGE_KEY)) || {}; } catch { return {}; }
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveState() { try { store.set(STORAGE_KEY, JSON.stringify(state)); } catch {} }
 
 const state = loadState();
 if (!state.markers)   state.markers   = [];
@@ -402,7 +409,7 @@ function groupBuildings(svgDoc) {
 
   let bid = 0;
   groups.forEach(items => {
-    const g = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     const id = 'bg-' + (bid++);
     g.setAttribute('class', 'building-group');
     g.setAttribute('id', id);
@@ -714,14 +721,14 @@ async function init() {
     const doc    = parser.parseFromString(text, 'image/svg+xml');
     svgElement   = doc.documentElement;
 
-    // Remove fixed dimensions so Leaflet can size the overlay correctly
-    svgElement.removeAttribute('width');
-    svgElement.removeAttribute('height');
+    // Append to a temporary hidden container so getBBox() works
+    // SVG must have explicit px dimensions for getBBox() to return real values
+    svgElement.setAttribute('width', '842');
+    svgElement.setAttribute('height', '1191');
     svgElement.setAttribute('preserveAspectRatio', 'none');
 
-    // Append to a temporary hidden container so getBBox() works
     const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:842px;height:1191px;';
+    tmp.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:842px;height:1191px;overflow:hidden;';
     tmp.appendChild(svgElement);
     document.body.appendChild(tmp);
 
@@ -730,9 +737,11 @@ async function init() {
 
     groupBuildings(svgElement);
 
-    // Move SVG from temp container — createOverlay will re-parent it
+    // Remove temp container; strip px dimensions so Leaflet can size the overlay
     tmp.removeChild(svgElement);
     document.body.removeChild(tmp);
+    svgElement.removeAttribute('width');
+    svgElement.removeAttribute('height');
 
     createOverlay(svgElement, state.bounds);
 
