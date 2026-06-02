@@ -144,13 +144,12 @@
   #align-panel .al-hint { font-size: 12px; color: #666; line-height: 1.55; margin-bottom: 14px; }
   #align-panel .al-hint strong { color: #1a1a2e; }
 
-  /* Corner drag handle icons */
+  /* Alignment center-drag handle */
   .align-handle {
-    width: 26px; height: 26px;
-    background: #1a1a2e; border: 2.5px solid #f0c060; border-radius: 4px;
+    background: #1a1a2e; border: 2.5px solid #f0c060; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 800; color: #f0c060;
-    cursor: move; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    color: #f0c060; cursor: move;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
   }
 
   /* Toast */
@@ -258,14 +257,19 @@
 <div class="side-panel" id="align-panel">
   <h3>Align Overlay</h3>
   <p class="al-hint">
-    Drag the <strong>SW</strong> and <strong>NE</strong> corner handles on the map
-    to line up the buildings with satellite imagery.<br><br>
-    Turn on <strong>Satellite</strong> mode first to see the tiles underneath.
+    Enable <strong>Satellite</strong>, then drag the <strong>✛</strong> handle
+    to position the map, and adjust scale until buildings match.
   </p>
-  <div class="pnl-actions">
+  <label style="font-size:11px;color:#666;display:block;margin:10px 0 6px">Scale</label>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="align-scale-down" class="btn-cls" style="width:34px;height:34px;font-size:20px;line-height:1;padding:0">−</button>
+    <span id="align-scale-val" style="flex:1;text-align:center;font-size:15px;font-weight:700;color:#1a1a2e">1.00×</span>
+    <button id="align-scale-up"   class="btn-cls" style="width:34px;height:34px;font-size:20px;line-height:1;padding:0">+</button>
+  </div>
+  <div class="pnl-actions" style="margin-top:14px">
     <button class="btn-save" id="align-save">Save</button>
-    <button class="btn-del" id="align-reset">Reset</button>
-    <button class="btn-cls" id="align-cancel">Cancel</button>
+    <button class="btn-del"  id="align-reset">Reset</button>
+    <button class="btn-cls"  id="align-cancel">Cancel</button>
   </div>
 </div>
 
@@ -275,12 +279,28 @@
 // ─────────────────────────────────────────────────────────────
 // State & storage
 // ─────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'lundby_v3';
+const STORAGE_KEY = 'lundby_v4';
 
 const DEFAULT_BOUNDS = {
   sw: [57.7026, 11.9403],
   ne: [57.7174, 11.9597]
 };
+
+// Alignment is stored as center + scale rather than raw corners.
+// The SVG has a fixed internal aspect ratio; scale resizes it uniformly.
+const DEFAULT_CENTER = [
+  (DEFAULT_BOUNDS.sw[0] + DEFAULT_BOUNDS.ne[0]) / 2,
+  (DEFAULT_BOUNDS.sw[1] + DEFAULT_BOUNDS.ne[1]) / 2
+];
+const HALF_LAT = (DEFAULT_BOUNDS.ne[0] - DEFAULT_BOUNDS.sw[0]) / 2;
+const HALF_LNG = (DEFAULT_BOUNDS.ne[1] - DEFAULT_BOUNDS.sw[1]) / 2;
+
+function boundsFromAlign(center, scale) {
+  return {
+    sw: [center[0] - scale * HALF_LAT, center[1] - scale * HALF_LNG],
+    ne: [center[0] + scale * HALF_LAT, center[1] + scale * HALF_LNG]
+  };
+}
 
 // Safe localStorage wrapper (Tracking Prevention may block in cross-site contexts)
 const store = (() => {
@@ -300,8 +320,22 @@ function saveState() { try { store.set(STORAGE_KEY, JSON.stringify(state)); } ca
 const state = loadState();
 if (!state.markers)   state.markers   = [];
 if (!state.buildings) state.buildings = {};
-if (!state.bounds)    state.bounds    = DEFAULT_BOUNDS;
 if (!state.view)      state.view      = null;
+// Migrate old sw/ne bounds format → center+scale
+if (!state.align) {
+  if (state.bounds && state.bounds.sw) {
+    const c = [
+      (state.bounds.sw[0] + state.bounds.ne[0]) / 2,
+      (state.bounds.sw[1] + state.bounds.ne[1]) / 2
+    ];
+    const s = +((state.bounds.ne[0] - state.bounds.sw[0]) / (2 * HALF_LAT)).toFixed(3);
+    state.align = { center: c, scale: s };
+  } else {
+    state.align = { center: [...DEFAULT_CENTER], scale: 1.0 };
+  }
+}
+// Derived — always computed, never stored separately
+state.bounds = boundsFromAlign(state.align.center, state.align.scale);
 
 // ─────────────────────────────────────────────────────────────
 // Leaflet map setup
@@ -611,82 +645,95 @@ document.getElementById('btn-satellite').addEventListener('click', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Visual alignment
+// Visual alignment — center drag + scale
 // ─────────────────────────────────────────────────────────────
-let alignActive = false;
-let alignHandles = [];   // [swMarker, neMarker]
-let alignPending = null; // { sw, ne } being previewed
+let alignActive  = false;
+let alignHandle  = null;   // single center Leaflet marker
+let alignPending = null;   // { center, scale } being previewed
 
-function makeHandleIcon(label) {
-  return L.divIcon({
-    className: '',
-    html: `<div class="align-handle">${label}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13]
-  });
+const centerIcon = L.divIcon({
+  className: '',
+  html: `<div class="align-handle" style="width:32px;height:32px;border-radius:50%;font-size:18px;line-height:28px;text-align:center">✛</div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16]
+});
+
+function applyAlignPreview() {
+  const b = boundsFromAlign(alignPending.center, alignPending.scale);
+  svgOverlay.setBounds(L.latLngBounds(b.sw, b.ne));
+  document.getElementById('align-scale-val').textContent = alignPending.scale.toFixed(2) + '×';
 }
 
 function enterAlignMode() {
   if (!svgOverlay) return;
   if (alignActive) return;
-  alignActive = true;
-  alignPending = { sw: [...state.bounds.sw], ne: [...state.bounds.ne] };
+  alignActive  = true;
+  alignPending = { center: [...state.align.center], scale: state.align.scale };
 
   svgOverlay.setOpacity(0.5);
   document.getElementById('btn-calibrate').classList.add('active');
+  document.getElementById('align-scale-val').textContent = alignPending.scale.toFixed(2) + '×';
 
-  const swM = L.marker(alignPending.sw, {
-    draggable: true, icon: makeHandleIcon('SW'), zIndexOffset: 3000
+  alignHandle = L.marker(alignPending.center, {
+    draggable: true, icon: centerIcon, zIndexOffset: 3000
   }).addTo(map);
 
-  const neM = L.marker(alignPending.ne, {
-    draggable: true, icon: makeHandleIcon('NE'), zIndexOffset: 3000
-  }).addTo(map);
-
-  function onDrag() {
-    const sw = swM.getLatLng();
-    const ne = neM.getLatLng();
-    alignPending = { sw: [sw.lat, sw.lng], ne: [ne.lat, ne.lng] };
-    svgOverlay.setBounds(L.latLngBounds(alignPending.sw, alignPending.ne));
-  }
-
-  swM.on('drag', onDrag);
-  neM.on('drag', onDrag);
-  alignHandles = [swM, neM];
+  alignHandle.on('drag', () => {
+    const ll = alignHandle.getLatLng();
+    alignPending.center = [ll.lat, ll.lng];
+    applyAlignPreview();
+  });
 
   closePanels();
   document.getElementById('align-panel').style.display = 'block';
 }
 
 function exitAlignMode(save) {
-  if (save && alignPending) {
-    state.bounds = alignPending;
+  if (save) {
+    state.align  = { center: [...alignPending.center], scale: alignPending.scale };
+    state.bounds = boundsFromAlign(state.align.center, state.align.scale);
     saveState();
     showToast('Alignment saved');
   } else if (svgOverlay) {
     svgOverlay.setBounds(L.latLngBounds(state.bounds.sw, state.bounds.ne));
   }
-  alignHandles.forEach(m => m.remove());
-  alignHandles = [];
+  if (alignHandle) { alignHandle.remove(); alignHandle = null; }
   alignPending = null;
-  alignActive = false;
+  alignActive  = false;
   if (svgOverlay) svgOverlay.setOpacity(1);
   closePanels();
 }
 
+function nudgeScale(delta) {
+  if (!alignActive) return;
+  alignPending.scale = Math.max(0.05, Math.round((alignPending.scale + delta) * 100) / 100);
+  applyAlignPreview();
+}
+
+// Hold-to-repeat on scale buttons
+function bindHoldButton(id, fn) {
+  const el = document.getElementById(id);
+  let iv;
+  el.addEventListener('mousedown',  () => { fn(); iv = setInterval(fn, 80); });
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); iv = setInterval(fn, 80); });
+  const stop = () => clearInterval(iv);
+  el.addEventListener('mouseup',   stop); el.addEventListener('mouseleave', stop);
+  el.addEventListener('touchend',  stop); el.addEventListener('touchcancel', stop);
+}
+bindHoldButton('align-scale-up',   () => nudgeScale(+0.01));
+bindHoldButton('align-scale-down', () => nudgeScale(-0.01));
+
 document.getElementById('btn-calibrate').addEventListener('click', () => {
   if (alignActive) { exitAlignMode(false); } else { enterAlignMode(); }
 });
-
 document.getElementById('align-save').addEventListener('click',   () => exitAlignMode(true));
-document.getElementById('align-reset').addEventListener('click',  () => {
-  alignPending = { sw: [...DEFAULT_BOUNDS.sw], ne: [...DEFAULT_BOUNDS.ne] };
-  alignHandles[0].setLatLng(alignPending.sw);
-  alignHandles[1].setLatLng(alignPending.ne);
-  svgOverlay.setBounds(L.latLngBounds(alignPending.sw, alignPending.ne));
-  showToast('Reset to defaults — drag to fine-tune, then Save');
-});
 document.getElementById('align-cancel').addEventListener('click', () => exitAlignMode(false));
+document.getElementById('align-reset').addEventListener('click',  () => {
+  alignPending = { center: [...DEFAULT_CENTER], scale: 1.0 };
+  alignHandle.setLatLng(alignPending.center);
+  applyAlignPreview();
+  showToast('Reset — drag handle and scale, then Save');
+});
 
 // ─────────────────────────────────────────────────────────────
 // Panel helpers
