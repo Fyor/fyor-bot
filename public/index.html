@@ -27,20 +27,26 @@
 
   /* The SVG overlay inside Leaflet — panning handled by Leaflet */
   .lundby-svg-overlay {
-    pointer-events: none;        /* overlay container */
+    pointer-events: none;
   }
-  .lundby-svg-overlay path { pointer-events: auto; }
+  /* Only building groups need pointer events — reduces hit-testing on 95k paths */
+  .lundby-svg-overlay path { pointer-events: none; }
+  .building-group { pointer-events: auto; }
 
-  /* Infrastructure lines hidden in satellite mode */
-  body.satellite-mode .lundby-svg-overlay path:not(.building):not(.infra) {
+  /* Infra (gray text outlines) hidden by default — too noisy at normal zoom */
+  .lundby-svg-overlay .infra { display: none; }
+
+  /* Infrastructure lines: slightly transparent by default */
+  .lundby-svg-overlay path:not(.building):not(.infra) {
+    shape-rendering: optimizeSpeed;
+  }
+
+  /* Satellite mode: hide all non-building paths */
+  body.satellite-mode .lundby-svg-overlay path:not(.building) {
     display: none;
   }
   body.satellite-mode .lundby-svg-overlay .building {
     fill-opacity: 0.65 !important;
-  }
-  /* In clean map mode, show full SVG but with a light white backing */
-  body.clean-mode .lundby-svg-overlay path:not(.building):not(.infra) {
-    stroke-opacity: 0.35;
   }
 
   /* Building hover / selection */
@@ -384,19 +390,35 @@ function groupBuildings(svgDoc) {
     } catch (e) {}
   });
 
-  // Union-Find clustering
+  const n = boxes.length;
   const par = boxes.map((_, i) => i);
-  const find = i => par[i] === i ? i : (par[i] = find(par[i]));
-  const union = (i, j) => { par[find(i)] = find(j); };
+  // Track per-cluster bounding box to prevent mega-clusters
+  const cb = boxes.map(({ bb }) => ({
+    x0: bb.x, y0: bb.y, x1: bb.x + bb.width, y1: bb.y + bb.height
+  }));
 
-  const PAD = 8;
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
+  const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+
+  const PAD = 3;      // pixels of proximity to group building pieces
+  const MAX_DIM = 90; // max cluster side in SVG pixels (~180m); prevents chain-linking
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
       const a = boxes[i].bb, b = boxes[j].bb;
-      if (a.x - PAD < b.x + b.width  &&
-          a.x + a.width + PAD > b.x  &&
-          a.y - PAD < b.y + b.height &&
-          a.y + a.height + PAD > b.y) union(i, j);
+      if (!(a.x - PAD < b.x + b.width  &&
+            a.x + a.width + PAD > b.x  &&
+            a.y - PAD < b.y + b.height &&
+            a.y + a.height + PAD > b.y)) continue;
+      const ri = find(i), rj = find(j);
+      if (ri === rj) continue;
+      // Compute merged bbox and reject if too large
+      const x0 = Math.min(cb[ri].x0, cb[rj].x0);
+      const y0 = Math.min(cb[ri].y0, cb[rj].y0);
+      const x1 = Math.max(cb[ri].x1, cb[rj].x1);
+      const y1 = Math.max(cb[ri].y1, cb[rj].y1);
+      if (x1 - x0 > MAX_DIM || y1 - y0 > MAX_DIM) continue;
+      par[ri] = rj;
+      cb[rj] = { x0, y0, x1, y1 };
     }
   }
 
