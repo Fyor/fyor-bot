@@ -126,6 +126,17 @@ def load_bgr(path: str) -> np.ndarray:
     return np.array(img)[:, :, ::-1].copy()      # RGB -> BGR
 
 
+def _cap_size(bgr: np.ndarray, max_dim: int = 2200) -> np.ndarray:
+    """Shrink huge phone photos up front — label text stays plenty legible and
+    everything downstream (detection, warp, OSD, OCR) gets much faster."""
+    h, w = bgr.shape[:2]
+    m = max(h, w)
+    if m > max_dim:
+        s = max_dim / m
+        bgr = cv2.resize(bgr, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
+    return bgr
+
+
 def _resize_for_ocr(gray: np.ndarray, lo: int = 1100, hi: int = 2400) -> np.ndarray:
     """Scale so the text is a comfortable size for Tesseract (and fast)."""
     h, w = gray.shape[:2]
@@ -184,7 +195,7 @@ def _rotate(bgr: np.ndarray, deg: int) -> np.ndarray:
 def _osd_orientation(bgr: np.ndarray) -> int | None:
     """Ask Tesseract which way is up. Returns 0/90/180/270 or None."""
     try:
-        osd = pytesseract.image_to_osd(bgr)
+        osd = pytesseract.image_to_osd(_cap_size(bgr, 1200))
         m = re.search(r"Rotate:\s*(\d+)", osd)
         if m:
             return int(m.group(1)) % 360
@@ -274,34 +285,45 @@ def _warp_rect(bgr: np.ndarray, rect) -> "np.ndarray | None":
 
 
 def find_label_crops(bgr: np.ndarray, max_crops: int = 2) -> list:
-    """Return up to `max_crops` deskewed crops of the bright label rectangle(s)."""
-    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    area = gray.shape[0] * gray.shape[1]
-    g = cv2.GaussianBlur(gray, (5, 5), 0)
-    th = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    k = cv2.getStructuringElement(cv2.MORPH_RECT, (31, 31))
-    closed = cv2.morphologyEx(th, cv2.MORPH_CLOSE, k, iterations=2)
-    cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    """Return up to `max_crops` deskewed crops of the white label rectangle(s).
 
-    crops = []
-    for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:8]:
+    The label is white (low saturation, high brightness); the boxes/bags around
+    it are coloured or dark.  We threshold on that, keep only contours that fill
+    a rotated rectangle well (i.e. are actually rectangular), and warp them
+    upright — which removes both the background clutter and any skew.
+    """
+    h, w = bgr.shape[:2]
+    area = h * w
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    white = ((hsv[:, :, 1] < 70) & (hsv[:, :, 2] > 130)).astype(np.uint8) * 255
+    white = cv2.morphologyEx(white, cv2.MORPH_OPEN,
+                             cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
+    white = cv2.morphologyEx(white, cv2.MORPH_CLOSE,
+                             cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25)), iterations=2)
+    cnts, _ = cv2.findContours(white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    cand = []
+    for c in cnts:
         a = cv2.contourArea(c)
-        if a < 0.03 * area or a > 0.99 * area:   # too small, or basically the whole frame
+        if a < 0.03 * area or a > 0.92 * area:
             continue
         rect = cv2.minAreaRect(c)
-        (_, _), (rw, rh), _ = rect
-        if min(rw, rh) < 40:
+        rw, rh = rect[1]
+        if min(rw, rh) < 60:
             continue
-        if max(rw, rh) / max(1.0, min(rw, rh)) > 6:   # too elongated to be a label
+        if max(rw, rh) / max(1.0, min(rw, rh)) > 4.5:     # too elongated for a label
             continue
+        if a / (rw * rh + 1e-6) < 0.62:                   # contour not rectangular enough
+            continue
+        cand.append((a, rect))
+
+    crops = []
+    for _, rect in sorted(cand, key=lambda t: -t[0])[:max_crops]:
         crop = _warp_rect(bgr, rect)
         if crop is not None:
-            # pad a little so characters near the edge are not clipped
-            crop = cv2.copyMakeBorder(crop, 14, 14, 14, 14, cv2.BORDER_CONSTANT,
+            crop = cv2.copyMakeBorder(crop, 16, 16, 16, 16, cv2.BORDER_CONSTANT,
                                       value=(255, 255, 255))
             crops.append(crop)
-        if len(crops) >= max_crops:
-            break
     return crops
 
 
@@ -339,7 +361,7 @@ def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
 
     Returns a dict: {file, path, orientation, ritms: [...], votes: {ritm: n}}.
     """
-    bgr = load_bgr(path)
+    bgr = _cap_size(load_bgr(path))
     try:
         bases = find_label_crops(bgr)
     except Exception:
