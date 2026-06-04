@@ -313,7 +313,7 @@ def find_label_crops(bgr: np.ndarray, max_crops: int = 2) -> list:
             continue
         if max(rw, rh) / max(1.0, min(rw, rh)) > 4.5:     # too elongated for a label
             continue
-        if a / (rw * rh + 1e-6) < 0.62:                   # contour not rectangular enough
+        if a / (rw * rh + 1e-6) < 0.5:                    # contour not rectangular enough
             continue
         cand.append((a, rect))
 
