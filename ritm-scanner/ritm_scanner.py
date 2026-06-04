@@ -321,7 +321,7 @@ def find_label_crops(bgr: np.ndarray, max_crops: int = 2) -> list:
     white = cv2.morphologyEx(white, cv2.MORPH_OPEN,
                              cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
     white = cv2.morphologyEx(white, cv2.MORPH_CLOSE,
-                             cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25)), iterations=2)
+                             cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11)))
     cnts, _ = cv2.findContours(white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     cand = []
@@ -389,6 +389,22 @@ def _select_secondary(votes: dict, min_votes: int, top: int = 2) -> list:
     return [k for k, _ in sorted(keep.items(), key=lambda kv: (-kv[1], kv[0]))[:top]]
 
 
+# Fine rotations tried only as a last resort (label at an odd, non-90 angle).
+_FINE_ANGLES = [b + d for b in (0, 90, 180, 270) for d in (-10, 10)]
+
+
+def _rotate_fine(bgr: np.ndarray, angle: float) -> np.ndarray:
+    h, w = bgr.shape[:2]
+    cx, cy = w / 2, h / 2
+    m = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
+    cos, sin = abs(m[0, 0]), abs(m[0, 1])
+    nw, nh = int(h * sin + w * cos), int(h * cos + w * sin)
+    m[0, 2] += nw / 2 - cx
+    m[1, 2] += nh / 2 - cy
+    return cv2.warpAffine(bgr, m, (nw, nh), flags=cv2.INTER_CUBIC,
+                          borderValue=(255, 255, 255))
+
+
 def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
     """Scan one image and return the detected RITM number(s).
 
@@ -447,6 +463,23 @@ def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
             run(found_deg, rest, racc, sacc)
             rit_votes, sec_votes, chosen = racc, sacc, found_deg
             break                        # first candidate that yields RITM(s) wins
+
+    if chosen is None:
+        # Last resort: the label is at an odd (non-90) angle. Brute-force fine
+        # rotations of the best label crop (or the whole photo). Only runs when
+        # everything else failed, so it never slows the common case.
+        base = bases[0] if len(bases) > 1 else bgr
+        racc, sacc = {}, {}
+        for ang in _FINE_ANGLES:
+            img = _rotate_fine(base, ang)
+            for variant, psm, wl in _PROBE:
+                text = _ocr(preprocess(img, variant), psm, wl)
+                for ritm in find_ritms(text):
+                    racc[ritm] = racc.get(ritm, 0) + 1
+                for sid in find_secondary_ids(text):
+                    sacc[sid] = sacc.get(sid, 0) + 1
+        if racc or sacc:
+            rit_votes, sec_votes, chosen = racc, sacc, "fine"
 
     return {
         "file": os.path.basename(path),

@@ -27,15 +27,16 @@ Measured against ground truth read by eye (`eval_real.py`):
 
 | Metric                                   | Score   |
 |------------------------------------------|---------|
-| RITM read exactly                        | 10 / 13 |
-| Secondary id read correctly              | 10 / 13 |
-| **Usable (≥1 of the two ids correct)**   | **11 / 13** |
-| Speed                                    | ~5 s/photo |
+| RITM read exactly                        | 11 / 13 |
+| Secondary id read correctly              | 11 / 13 |
+| **Usable (≥1 of the two ids correct)**   | **12 / 13** |
+| Speed                                    | ~7 s/photo |
 
-The 2 it can't read (`100202`, `100923`) are labels that are **curved on the
-box / under glare** — Tesseract returns garbage even from a clean, leveled
-crop, so the watcher flags them `needs_review` for a quick manual glance. A
-local neural OCR reads exactly those (see *Harder photos* below).
+The 1 it can't read (`100923`) is a label **under glare on crinkled plastic,
+tilted and partly occluded** — Tesseract returns nothing even from the leveled
+crop (at any angle), so the watcher flags it `needs_review` for a quick manual
+glance (or just re-shoot that one flatter). A local neural OCR reads it (see
+*Harder photos* below).
 
 ---
 
@@ -120,13 +121,15 @@ real.
    tolerating the prefix and number landing on separate lines.
 6. **Voting:** a real id gets read by several passes; noise doesn't. Tokens
    seen ≥ 2 times are kept (tune with `--min-votes`).
+7. **Fallback:** if nothing is found at all, it brute-forces fine rotations
+   (±10°) of the label crop — catching labels shot at an odd, non-90° angle.
 
 ---
 
 ## Harder photos (optional neural OCR)
 
-The 2–3 photos Tesseract can't read are a recognition-engine limit, not a
-preprocessing one (leveling/sharpening don't help). A local **neural** OCR —
+The occasional photo Tesseract can't read is a recognition-engine limit, not a
+preprocessing one (leveling/sharpening/fine-rotation don't help). A local **neural** OCR —
 **EasyOCR** or **PaddleOCR**, still 100% offline, no cloud — reads exactly
 those, and as a *fallback after* Tesseract it would push this to ~13/13.
 
