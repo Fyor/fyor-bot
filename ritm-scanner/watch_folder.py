@@ -89,12 +89,16 @@ def _append_csv(log_path: str, row: dict) -> None:
     with open(log_path, "a", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         if new:
-            w.writerow(["timestamp", "file", "ritm_1", "ritm_2", "orientation", "all_found"])
+            w.writerow(["timestamp", "file", "ritm_1", "ritm_2",
+                        "secondary_id", "needs_review", "orientation", "all_found"])
         ritms = row["ritms"]
+        sec = row["secondary"]
         w.writerow([
             row["timestamp"], row["file"],
             ritms[0] if len(ritms) > 0 else "",
             ritms[1] if len(ritms) > 1 else "",
+            " / ".join(sec),
+            "yes" if not ritms and not sec else "",
             row["orientation"],
             " ".join(f"{k}({v})" for k, v in row["votes"].items()),
         ])
@@ -104,20 +108,28 @@ def process(path: str, args) -> dict:
     result = ritm_scanner.scan_image(path, min_votes=args.min_votes)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ritms = result["ritms"]
+    sec = result.get("secondary", [])
 
-    pretty = ", ".join(ritms) if ritms else "(none found — check the photo)"
+    if ritms or sec:
+        pretty = ", ".join(ritms) if ritms else "(no RITM)"
+        if sec:
+            pretty += f"   id: {' / '.join(sec)}"
+    else:
+        pretty = "(nothing read — CHECK THIS PHOTO BY HAND)"
     print(f"[{ts}] {result['file']}\n          -> {pretty}")
 
-    row = {"timestamp": ts, "file": result["file"], "ritms": ritms,
+    row = {"timestamp": ts, "file": result["file"], "ritms": ritms, "secondary": sec,
            "orientation": result["orientation"], "votes": result["votes"]}
     _append_csv(args.log, row)
 
-    if ritms and args.clipboard:
-        _to_clipboard(" ".join(ritms))
+    # Clipboard / sidecar get whatever identifiers we have (RITM preferred).
+    ids = ritms + sec
+    if ids and args.clipboard:
+        _to_clipboard(" ".join(ritms) if ritms else " ".join(sec))
 
-    if args.sidecar and ritms:
+    if args.sidecar and ids:
         with open(os.path.splitext(path)[0] + ".ritm.txt", "w", encoding="utf-8") as fh:
-            fh.write("\n".join(ritms) + "\n")
+            fh.write("\n".join(ritms + [f"id: {s}" for s in sec]) + "\n")
 
     return result
 

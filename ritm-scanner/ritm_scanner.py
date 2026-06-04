@@ -114,6 +114,28 @@ def find_ritms(text: str) -> set[str]:
     return found
 
 
+# A secondary identifier under the RITM: a 1-2 letter prefix + 5-8 digits, e.g.
+# A525252, T0490084, V028937, YF71889.  Useful as a cross-check / fallback: if
+# the RITM is misread but this is right (or vice-versa), the request can still
+# be found.  The digit part tolerates the usual look-alike letters.
+_SECONDARY_RE = re.compile(r"\b([A-Z]{1,2})[ .]?([0-9OQDILZSGB|!]{5,8})\b", re.IGNORECASE)
+_SECONDARY_SKIP = {"RI", "IT", "TM", "RITM", "ID", "NR", "NO"}
+
+
+def find_secondary_ids(text: str) -> set[str]:
+    """Return secondary identifiers (e.g. ``A525252``) found in *text*."""
+    cleaned = _RITM_RE.sub("  ", text)          # remove RITM tokens first
+    found = set()
+    for m in _SECONDARY_RE.finditer(cleaned):
+        prefix = m.group(1).upper()
+        if prefix in _SECONDARY_SKIP:
+            continue
+        digits = _normalize_token(m.group(2))
+        if 5 <= len(digits) <= 8:
+            found.add(prefix + digits)
+    return found
+
+
 # --------------------------------------------------------------------------- #
 # Image loading / preprocessing
 # --------------------------------------------------------------------------- #
@@ -351,6 +373,22 @@ def _select(votes: dict, min_votes: int) -> list:
     return [r for r, _ in kept]
 
 
+def _select_secondary(votes: dict, min_votes: int, top: int = 2) -> list:
+    """Return the best-voted secondary identifier(s).
+
+    We keep up to `top` candidates rather than de-duplicating aggressively: the
+    point of the secondary id is to be a *fallback* the user can cross-check, so
+    it's better to surface both close reads (e.g. ``A223331`` and a noisy
+    ``A2223331``) than to risk hiding the correct one.
+    """
+    if not votes:
+        return []
+    top_votes = max(votes.values())
+    threshold = max(min_votes, (top_votes + 1) // 2)
+    keep = {k: v for k, v in votes.items() if v >= threshold} or dict(votes)
+    return [k for k, _ in sorted(keep.items(), key=lambda kv: (-kv[1], kv[0]))[:top]]
+
+
 def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
     """Scan one image and return the detected RITM number(s).
 
@@ -368,7 +406,8 @@ def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
         bases = []
     bases.append(bgr)                    # whole photo as the final fallback
 
-    votes: dict[str, int] = {}
+    rit_votes: dict[str, int] = {}
+    sec_votes: dict[str, int] = {}
     chosen = None
     rest = [c for c in _FULL if c not in _PROBE]
 
@@ -381,37 +420,42 @@ def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
                 _cache[key] = preprocess(_rotate(_base, deg), variant)
             return _cache[key]
 
-        def run(deg, combos, acc):
+        def run(deg, combos, racc, sacc):
             for variant, psm, wl in combos:
                 text = _ocr(proc(deg, variant), psm, wl)
                 for ritm in find_ritms(text):
-                    acc[ritm] = acc.get(ritm, 0) + 1
+                    racc[ritm] = racc.get(ritm, 0) + 1
+                for sid in find_secondary_ids(text):
+                    sacc[sid] = sacc.get(sid, 0) + 1
                 if debug and text.strip():
                     tag = f"base{bi} deg={deg} {variant} psm={psm}{'/wl' if wl else ''}"
                     print(f"    [{tag}] {text.strip()!r}", file=sys.stderr)
-            return acc
+            return racc
 
+        # Phase 1 — find the orientation via a cheap RITM probe.
         found_deg = None
-        acc: dict = {}
+        racc: dict = {}
+        sacc: dict = {}
         for deg in _orientation_order(base):
-            trial = run(deg, _PROBE, {})
-            if trial:
-                found_deg, acc = deg, trial
+            r_try, s_try = {}, {}
+            run(deg, _PROBE, r_try, s_try)
+            if r_try:
+                found_deg, racc, sacc = deg, r_try, s_try
                 break
         if found_deg is not None:
-            run(found_deg, rest, acc)    # accumulate the remaining passes' votes
-            votes = acc
-            chosen = found_deg
+            # Phase 2 — full passes at the winning orientation; gather both ids.
+            run(found_deg, rest, racc, sacc)
+            rit_votes, sec_votes, chosen = racc, sacc, found_deg
             break                        # first candidate that yields RITM(s) wins
-
-    ritms = _select(votes, min_votes)
 
     return {
         "file": os.path.basename(path),
         "path": path,
         "orientation": chosen,
-        "ritms": ritms,
-        "votes": dict(sorted(votes.items(), key=lambda kv: -kv[1])),
+        "ritms": _select(rit_votes, min_votes),
+        "secondary": _select_secondary(sec_votes, min_votes),
+        "votes": dict(sorted(rit_votes.items(), key=lambda kv: -kv[1])),
+        "secondary_votes": dict(sorted(sec_votes.items(), key=lambda kv: -kv[1])),
     }
 
 
@@ -445,9 +489,15 @@ def main(argv=None) -> int:
         print(json.dumps(results, indent=2))
     else:
         for r in results:
-            ritms = ", ".join(r["ritms"]) if r["ritms"] else "(none found)"
-            orient = f"orient={r['orientation']}" if r["orientation"] is not None else "orient=?"
-            print(f"{r['file']:<34} {ritms:<32} [{orient}]")
+            ritms = ", ".join(r["ritms"]) if r["ritms"] else ""
+            sec = ", ".join(r.get("secondary", []))
+            if ritms or sec:
+                ident = ritms or "(no RITM)"
+                if sec:
+                    ident += f"   id: {sec}"
+            else:
+                ident = "(nothing read — check this photo by hand)"
+            print(f"{r['file']:<30} {ident}")
     return 0
 
 
