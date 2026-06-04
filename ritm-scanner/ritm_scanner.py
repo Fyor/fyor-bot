@@ -242,62 +242,147 @@ def _orientation_order(bgr: np.ndarray) -> list[int]:
     return order
 
 
+# --------------------------------------------------------------------------- #
+# Label localisation + deskew
+# --------------------------------------------------------------------------- #
+# Photos are rarely at a clean 0/90/180/270 angle, and the label sits among
+# clutter (other boxes, printed packaging).  Finding the bright label rectangle
+# and warping it upright removes the clutter and the skew in one step, which
+# both fixes tilted photos and speeds OCR up.
+
+def _order_points(pts: np.ndarray) -> np.ndarray:
+    rect = np.zeros((4, 2), dtype="float32")
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]          # top-left
+    rect[2] = pts[np.argmax(s)]          # bottom-right
+    d = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(d)]          # top-right
+    rect[3] = pts[np.argmax(d)]          # bottom-left
+    return rect
+
+
+def _warp_rect(bgr: np.ndarray, rect) -> "np.ndarray | None":
+    src = _order_points(cv2.boxPoints(rect).astype("float32"))
+    tl, tr, br, bl = src
+    w = int(max(np.linalg.norm(br - bl), np.linalg.norm(tr - tl)))
+    h = int(max(np.linalg.norm(tr - br), np.linalg.norm(tl - bl)))
+    if w < 10 or h < 10:
+        return None
+    dst = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype="float32")
+    m = cv2.getPerspectiveTransform(src, dst)
+    return cv2.warpPerspective(bgr, m, (w, h))
+
+
+def find_label_crops(bgr: np.ndarray, max_crops: int = 2) -> list:
+    """Return up to `max_crops` deskewed crops of the bright label rectangle(s)."""
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    area = gray.shape[0] * gray.shape[1]
+    g = cv2.GaussianBlur(gray, (5, 5), 0)
+    th = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    k = cv2.getStructuringElement(cv2.MORPH_RECT, (31, 31))
+    closed = cv2.morphologyEx(th, cv2.MORPH_CLOSE, k, iterations=2)
+    cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    crops = []
+    for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:8]:
+        a = cv2.contourArea(c)
+        if a < 0.03 * area or a > 0.99 * area:   # too small, or basically the whole frame
+            continue
+        rect = cv2.minAreaRect(c)
+        (_, _), (rw, rh), _ = rect
+        if min(rw, rh) < 40:
+            continue
+        if max(rw, rh) / max(1.0, min(rw, rh)) > 6:   # too elongated to be a label
+            continue
+        crop = _warp_rect(bgr, rect)
+        if crop is not None:
+            # pad a little so characters near the edge are not clipped
+            crop = cv2.copyMakeBorder(crop, 14, 14, 14, 14, cv2.BORDER_CONSTANT,
+                                      value=(255, 255, 255))
+            crops.append(crop)
+        if len(crops) >= max_crops:
+            break
+    return crops
+
+
+# --------------------------------------------------------------------------- #
+# Result selection
+# --------------------------------------------------------------------------- #
+
+def _select(votes: dict, min_votes: int) -> list:
+    """Pick the winning RITM(s): drop low-confidence reads and de-duplicate
+    near-identical reads that differ only by a stray leading/trailing digit."""
+    if not votes:
+        return []
+    top = max(votes.values())
+    threshold = max(min_votes, (top + 1) // 2)
+    strong = {r: n for r, n in votes.items() if n >= threshold} or dict(votes)
+
+    kept: list[tuple[str, int]] = []
+    for ritm, n in sorted(strong.items(), key=lambda kv: (-kv[1], kv[0])):
+        d = ritm[4:]
+        # a "shift" duplicate: same digits with one stray digit at an end
+        dup = any(d == k[4:] or d[1:] == k[4:][:-1] or d[:-1] == k[4:][1:]
+                  for k, _ in kept)
+        if not dup:
+            kept.append((ritm, n))
+    return [r for r, _ in kept]
+
+
 def scan_image(path: str, min_votes: int = 2, debug: bool = False) -> dict:
     """Scan one image and return the detected RITM number(s).
 
-    A cheap probe locates the correct right-angle orientation, then the full
-    set of OCR passes runs only at that orientation and the results are voted
-    on.  Falls back to a thorough sweep if the probe finds nothing.
+    Pipeline: isolate + deskew the label (falling back to the whole photo),
+    then for each candidate try the 4 right-angle orientations.  A cheap probe
+    finds the correct orientation, the full set of OCR passes runs only there,
+    and the reads are voted on.
 
     Returns a dict: {file, path, orientation, ritms: [...], votes: {ritm: n}}.
     """
     bgr = load_bgr(path)
-    order = _orientation_order(bgr)
-
-    proc_cache: dict = {}
-
-    def proc(deg: int, variant: str) -> np.ndarray:
-        key = (deg, variant)
-        if key not in proc_cache:
-            proc_cache[key] = preprocess(_rotate(bgr, deg), variant)
-        return proc_cache[key]
-
-    def run(deg: int, combos, votes: dict) -> dict:
-        for variant, psm, wl in combos:
-            text = _ocr(proc(deg, variant), psm, wl)
-            for ritm in find_ritms(text):
-                votes[ritm] = votes.get(ritm, 0) + 1
-            if debug and text.strip():
-                tag = f"deg={deg} {variant} psm={psm}{'/wl' if wl else ''}"
-                print(f"    [{tag}] {text.strip()!r}", file=sys.stderr)
-        return votes
+    try:
+        bases = find_label_crops(bgr)
+    except Exception:
+        bases = []
+    bases.append(bgr)                    # whole photo as the final fallback
 
     votes: dict[str, int] = {}
     chosen = None
+    rest = [c for c in _FULL if c not in _PROBE]
 
-    # Phase 1 — cheap probe to find the orientation.
-    for deg in order:
-        v = run(deg, _PROBE, {})
-        if v:
-            chosen, votes = deg, v
-            break
+    for bi, base in enumerate(bases):
+        cache: dict = {}
 
-    if chosen is not None:
-        # Phase 2 — gather more votes at the winning orientation.
-        rest = [c for c in _FULL if c not in _PROBE]
-        run(chosen, rest, votes)
-    else:
-        # Fallback — nothing in the probes; sweep every orientation fully.
-        for deg in order:
-            v = run(deg, _FULL, {})
-            if v:
-                chosen, votes = deg, v
+        def proc(deg, variant, _base=base, _cache=cache):
+            key = (deg, variant)
+            if key not in _cache:
+                _cache[key] = preprocess(_rotate(_base, deg), variant)
+            return _cache[key]
+
+        def run(deg, combos, acc):
+            for variant, psm, wl in combos:
+                text = _ocr(proc(deg, variant), psm, wl)
+                for ritm in find_ritms(text):
+                    acc[ritm] = acc.get(ritm, 0) + 1
+                if debug and text.strip():
+                    tag = f"base{bi} deg={deg} {variant} psm={psm}{'/wl' if wl else ''}"
+                    print(f"    [{tag}] {text.strip()!r}", file=sys.stderr)
+            return acc
+
+        found_deg = None
+        acc: dict = {}
+        for deg in _orientation_order(base):
+            trial = run(deg, _PROBE, {})
+            if trial:
+                found_deg, acc = deg, trial
                 break
+        if found_deg is not None:
+            run(found_deg, rest, acc)    # accumulate the remaining passes' votes
+            votes = acc
+            chosen = found_deg
+            break                        # first candidate that yields RITM(s) wins
 
-    # Keep tokens seen by at least `min_votes` passes; fall back to anything.
-    strong = {r: n for r, n in votes.items() if n >= min_votes}
-    keep = strong or votes
-    ritms = sorted(keep, key=lambda r: (-keep[r], r))
+    ritms = _select(votes, min_votes)
 
     return {
         "file": os.path.basename(path),
