@@ -1,0 +1,9 @@
+# runtime artifacts created by watch_folder.py
+ritm_results.csv
+.ritm_seen.json
+processed/
+*.ritm.txt
+
+# python
+__pycache__/
+*.pyc
