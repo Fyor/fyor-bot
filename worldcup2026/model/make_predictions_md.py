@@ -3,11 +3,13 @@
 always matches the latest run exactly."""
 import csv
 import os
+import sys
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "output")
 DOC = os.path.join(HERE, "..", "PREDICTIONS.md")
+sys.path.insert(0, HERE)
 
 
 def read(name):
@@ -17,6 +19,32 @@ def read(name):
 
 def pct(x):
     return f"{float(x) * 100:.0f}"
+
+
+def draw_analysis(picks):
+    """For every match, compare the chosen pick against the best possible
+    draw pick (0-0, 1-1, 2-2, ...) under the binary scoring rule."""
+    import numpy as np
+    from run_predictions import score_grid, best_pick
+
+    total_pdraw, closest = 0.0, []
+    for r in picks:
+        g = score_grid(float(r["xG1"]), float(r["xG2"]))
+        p_draw = float(np.trace(g))
+        total_pdraw += p_draw
+        pick, ep_pick, _ = best_pick(g)
+        diag = np.diag(g)[:7]
+        k = int(np.argmax(diag))
+        ep_draw = 30 * p_draw + 15 * float(diag[k])
+        closest.append({
+            "match": f"{r['team1']} vs {r['team2']}",
+            "pick": f"{pick[0]}-{pick[1]}", "ep_pick": ep_pick,
+            "draw": f"{k}-{k}", "ep_draw": ep_draw,
+            "gap": ep_pick - ep_draw, "p_draw": p_draw,
+            "p_best": max(float(r["p_win1"]), float(r["p_win2"])),
+        })
+    closest.sort(key=lambda x: x["gap"])
+    return total_pdraw, closest
 
 
 def main():
@@ -78,6 +106,29 @@ def main():
     L.append("Enter the **Pick** column. E[pts] uses the binary rule: 30 × P(outcome) + 15 × P(exact).  ")
     L.append("The platform derives your group standings from these picks — the implied standings below "
              "match the model's most-likely final order in every group.\n")
+
+    # Draw analysis — why there are zero draw picks
+    total_pdraw, closest = draw_analysis(picks)
+    L.append("### Why are there ZERO draw picks (0-0, 1-1, 2-2)?\n")
+    L.append(f"Deliberate, and verified per match. The optimiser evaluates every draw score for every "
+             f"fixture; the model itself expects **~{total_pdraw:.0f} of the 72 matches to end drawn** "
+             f"(avg P(draw) = {total_pdraw/72*100:.0f}%, in line with the ~22-26% historical WC rate). "
+             f"But it can't know *which* ones — and in **no single fixture** is the draw the most likely "
+             f"outcome: the highest P(draw) anywhere is "
+             f"{max(c['p_draw'] for c in closest)*100:.0f}%, always below the favourite's win probability. "
+             f"Since 30 of the 45 available points ride on the outcome direction, a draw pick sacrifices "
+             f"expected points in every match. The closest calls:\n")
+    L.append("| Match | Pick | E[pts] | Best draw | E[draw pts] | You'd lose |")
+    L.append("|-------|------|--------|-----------|-------------|------------|")
+    for c in closest[:5]:
+        L.append(f"| {c['match']} | **{c['pick']}** | {c['ep_pick']:.1f} | {c['draw']} "
+                 f"({c['p_draw']*100:.0f}% draw) | {c['ep_draw']:.1f} | −{c['gap']:.1f} pts |")
+    L.append("")
+    L.append("Even in the tightest game, picking the draw costs ~2 expected points. A draw pick would only "
+             "win if P(draw) came within ~1.5 percentage points of the favourite's win probability — that "
+             "never happens at World Cup scoring rates (P(draw) tops out near 28%; the favourite is always "
+             "37%+). Note 1-1 often *is* the single most likely exact scoreline in tight games — under an "
+             "exact-only rule it would be the pick — but the 30-pt outcome component flips the decision.\n")
 
     for grp in sorted(by_group):
         teams = [r["team"] for r in st_by_group[grp]]

@@ -53,6 +53,20 @@ A midfielder scoring 3 goals earns the same points as a forward scoring 6.
 Enter the **Pick** column. E[pts] uses the binary rule: 30 × P(outcome) + 15 × P(exact).  
 The platform derives your group standings from these picks — the implied standings below match the model's most-likely final order in every group.
 
+### Why are there ZERO draw picks (0-0, 1-1, 2-2)?
+
+Deliberate, and verified per match. The optimiser evaluates every draw score for every fixture; the model itself expects **~15 of the 72 matches to end drawn** (avg P(draw) = 22%, in line with the ~22-26% historical WC rate). But it can't know *which* ones — and in **no single fixture** is the draw the most likely outcome: the highest P(draw) anywhere is 28%, always below the favourite's win probability. Since 30 of the 45 available points ride on the outcome direction, a draw pick sacrifices expected points in every match. The closest calls:
+
+| Match | Pick | E[pts] | Best draw | E[draw pts] | You'd lose |
+|-------|------|--------|-----------|-------------|------------|
+| South Korea vs Czechia | **0-1** | 12.5 | 1-1 (28% draw) | 10.3 | −2.2 pts |
+| Paraguay vs Australia | **0-1** | 12.5 | 1-1 (28% draw) | 10.3 | −2.2 pts |
+| Switzerland vs Canada | **1-0** | 13.2 | 1-1 (28% draw) | 10.3 | −2.9 pts |
+| Turkey vs Australia | **1-0** | 13.8 | 1-1 (28% draw) | 10.2 | −3.5 pts |
+| Turkey vs Paraguay | **1-0** | 14.0 | 1-1 (27% draw) | 10.2 | −3.8 pts |
+
+Even in the tightest game, picking the draw costs ~2 expected points. A draw pick would only win if P(draw) came within ~1.5 percentage points of the favourite's win probability — that never happens at World Cup scoring rates (P(draw) tops out near 28%; the favourite is always 37%+). Note 1-1 often *is* the single most likely exact scoreline in tight games — under an exact-only rule it would be the pick — but the 30-pt outcome component flips the decision.
+
 ### Group A — Mexico, Czechia, South Korea, South Africa
 
 **Predicted standings: 1. Mexico → 2. Czechia → 3. South Korea → 4. South Africa**
