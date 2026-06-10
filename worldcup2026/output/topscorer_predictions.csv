@@ -1,19 +1,19 @@
-player,team,golden_boot_odds,p_champion_odds_implied,team_p_advance_group,team_p_quarterfinal,team_exp_goals_total,player_exp_goals
-Mikel Oyarzabal,Spain,19.0,0.0526,0.984,0.581,11.51,5.01
-Lamine Yamal,Spain,21.0,0.0476,0.984,0.581,11.51,5.01
-Harry Kane,England,8.0,0.125,0.982,0.523,11.31,4.74
-Jude Bellingham,England,51.0,0.0196,0.982,0.523,11.31,4.74
-Lionel Messi,Argentina,17.0,0.0588,0.981,0.438,10.63,4.31
-Julian Alvarez,Argentina,36.0,0.0278,0.981,0.438,10.63,4.31
-Vinicius Junior,Brazil,26.0,0.0385,0.963,0.514,10.2,4.3
-Raphinha,Brazil,29.0,0.0345,0.963,0.514,10.2,4.3
-Cristiano Ronaldo,Portugal,26.0,0.0385,0.955,0.458,10.23,4.17
-Kylian Mbappe,France,7.0,0.1429,0.956,0.47,9.87,4.07
-Jamal Musiala,Germany,66.0,0.0152,0.958,0.474,9.66,3.93
-Lois Openda,Belgium,51.0,0.0196,0.954,0.359,9.44,3.65
-Christian Pulisic,United States,126.0,0.0079,0.903,0.34,8.11,3.12
-Santiago Gimenez,Mexico,66.0,0.0152,0.926,0.229,8.34,3.07
-Memphis Depay,Netherlands,51.0,0.0196,0.911,0.277,8.04,3.03
-Jonathan David,Canada,151.0,0.0066,0.868,0.225,7.34,2.68
-Erling Haaland,Norway,15.0,0.0667,0.822,0.219,6.9,2.53
-Viktor Gyokeres,Sweden,34.0,0.0294,0.614,0.072,4.58,1.56
+player,team,position,golden_boot_odds,p_odds_implied,position_multiplier,team_p_advance,team_p_semifinal,team_p_final,player_exp_pts
+Jude Bellingham,England,midfielder,51.0,0.0196,2.0,0.986,0.276,0.167,91.6
+Jamal Musiala,Germany,midfielder,66.0,0.0152,2.0,0.966,0.218,0.117,83.3
+Christian Pulisic,United States,midfielder,126.0,0.0079,2.0,0.896,0.175,0.064,68.3
+Mikel Oyarzabal,Spain,forward,19.0,0.0526,1.0,0.984,0.428,0.31,52.7
+Lamine Yamal,Spain,forward,21.0,0.0476,1.0,0.984,0.428,0.31,52.7
+Lionel Messi,Argentina,forward,17.0,0.0588,1.0,0.984,0.285,0.178,46.0
+Vinicius Junior,Brazil,forward,26.0,0.0385,1.0,0.971,0.363,0.183,46.0
+Raphinha,Brazil,forward,29.0,0.0345,1.0,0.971,0.363,0.183,46.0
+Julian Alvarez,Argentina,forward,36.0,0.0278,1.0,0.984,0.285,0.178,46.0
+Harry Kane,England,forward,8.0,0.125,1.0,0.986,0.276,0.167,45.8
+Kylian Mbappe,France,forward,7.0,0.1429,1.0,0.961,0.326,0.215,45.3
+Cristiano Ronaldo,Portugal,forward,26.0,0.0385,1.0,0.96,0.23,0.13,40.5
+Lois Openda,Belgium,forward,51.0,0.0196,1.0,0.96,0.137,0.07,37.7
+Memphis Depay,Netherlands,forward,51.0,0.0196,1.0,0.925,0.16,0.082,34.1
+Santiago Gimenez,Mexico,forward,66.0,0.0152,1.0,0.908,0.116,0.04,30.3
+Erling Haaland,Norway,forward,15.0,0.0667,1.0,0.845,0.123,0.052,28.4
+Jonathan David,Canada,forward,151.0,0.0066,1.0,0.882,0.079,0.023,28.2
+Viktor Gyokeres,Sweden,forward,34.0,0.0294,1.0,0.573,0.014,0.003,15.6

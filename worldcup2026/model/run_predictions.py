@@ -39,10 +39,19 @@ CFG = dict(
     # Simulation
     n_fit=8000, fit_iter=16, fit_lr=0.4, fit_step=60.0, fit_band=280.0,
     n_sim=40000, seed=26,
-    # Prediction-game points (Kicktipp classic)
-    pts_exact=4, pts_gd=3, pts_tend=2,
+    # Prediction-game points — binary: exact or outcome only (no goal-diff tier)
+    pts_exact_group=45, pts_outcome_group=30,
     pick_max=6,
 )
+
+# KO-stage escalating point values (exact, outcome)
+KO_SCORING = {
+    "R32": (90, 60), "R16": (135, 90),
+    "QF": (180, 120), "SF": (225, 150), "Final": (270, 180),
+}
+
+CONF_DISCOUNT = {"OFC": -50, "CONCACAF": -25, "CAF": -20, "AFC": -15, "CONMEBOL": 0, "UEFA": 0}
+_CONF_MAP: dict = {}  # populated after load_ratings
 
 HOST_CITY_COUNTRY = {
     "Mexico City": "Mexico", "Guadalajara": "Mexico", "Monterrey": "Mexico",
@@ -125,6 +134,8 @@ def load_ratings(teams):
             elo[t] = float(r["elo"])
         if r.get("fifa_rank"):
             fifa[t] = int(float(r["fifa_rank"]))
+        if r.get("confederation"):
+            _CONF_MAP[t] = r["confederation"].strip()
     missing = teams - set(elo)
     if missing:
         raise ValueError(f"Missing Elo for: {sorted(missing)}")
@@ -175,8 +186,18 @@ def devig(odds: dict, elo: dict) -> dict:
 def we(d): return 1.0 / (1.0 + 10 ** (-d / 400.0))
 
 
-def match_lambdas(r1, r2, h1=0.0, h2=0.0, ko=False):
-    d = (r1 + h1) - (r2 + h2)
+def _conf_adj(team1, team2):
+    """Small Elo discount for weaker-confederation teams vs stronger confederations."""
+    c1 = _CONF_MAP.get(team1, "UEFA")
+    c2 = _CONF_MAP.get(team2, "UEFA")
+    d1 = CONF_DISCOUNT.get(c1, 0)
+    d2 = CONF_DISCOUNT.get(c2, 0)
+    return d1 - d2  # net adjustment to r1 perspective
+
+
+def match_lambdas(r1, r2, h1=0.0, h2=0.0, ko=False, t1=None, t2=None):
+    conf = _conf_adj(t1, t2) if t1 and t2 else 0.0
+    d = (r1 + h1 + conf) - (r2 + h2)
     gd = float(np.clip(CFG["gd_slope"] * d, -CFG["gd_cap"], CFG["gd_cap"]))
     base = CFG["total_base_ko"] if ko else CFG["total_base_group"]
     total = base + CFG["mismatch_bump"] * (2 * abs(we(d) - 0.5)) ** 2
@@ -199,6 +220,12 @@ def score_grid(lam1, lam2):
     g[1, 0] *= 1 + lam2 * rho
     g[1, 1] *= 1 - rho
     g = np.maximum(g, 0)
+    # Historical WC calibration: 1-0/0-1 ~18% more common than Poisson predicts
+    WC_CALIB = np.ones((11, 11))
+    WC_CALIB[1, 0] *= 1.18; WC_CALIB[0, 1] *= 1.18
+    WC_CALIB[2, 1] *= 1.08; WC_CALIB[1, 2] *= 1.08
+    WC_CALIB[2, 0] *= 1.05; WC_CALIB[0, 2] *= 1.05
+    g = g * WC_CALIB[:g.shape[0], :g.shape[1]]
     return g / g.sum()
 
 
@@ -209,32 +236,21 @@ def outcome_probs(g):
     return p1, px, p2
 
 
-def best_pick(g):
+def best_pick(g, pts_exact=None, pts_outcome=None):
+    pts_exact   = pts_exact   if pts_exact   is not None else CFG["pts_exact_group"]
+    pts_outcome = pts_outcome if pts_outcome is not None else CFG["pts_outcome_group"]
     n = CFG["pick_max"] + 1
-    sz = g.shape[0]
-    best, best_ep = (0, 0), -1.0
-    alts = []
+    p_win1 = float(np.tril(g, -1).sum())
+    p_draw  = float(np.trace(g))
+    p_win2  = float(np.triu(g, 1).sum())
+    best, best_ep, alts = None, -1.0, []
     for a in range(n):
         for b in range(n):
-            p_exact = g[a, b]
-            diff_ab = a - b
-            same_gd = 0.0
-            for x in range(sz):
-                for y in range(sz):
-                    if x - y == diff_ab and not (x == a and y == b):
-                        same_gd += g[x, y]
-            if diff_ab > 0:
-                same_tend = float(np.tril(g, -1).sum()) - p_exact - same_gd
-            elif diff_ab < 0:
-                same_tend = float(np.triu(g, 1).sum()) - p_exact - same_gd
-            else:
-                same_tend = float(np.trace(g)) - p_exact - same_gd
-            ep = (CFG["pts_exact"] * p_exact +
-                  CFG["pts_gd"] * same_gd +
-                  CFG["pts_tend"] * same_tend)
-            alts.append(((a, b), float(ep)))
+            p_dir = p_win1 if a > b else (p_draw if a == b else p_win2)
+            ep = pts_outcome * p_dir + (pts_exact - pts_outcome) * float(g[a, b])
+            alts.append(((a, b), ep))
             if ep > best_ep:
-                best, best_ep = (a, b), float(ep)
+                best, best_ep = (a, b), ep
     alts.sort(key=lambda x: -x[1])
     return best, best_ep, alts[:5]
 
@@ -265,6 +281,7 @@ def simulate(groups, fixtures, ratings, n_sims, rng, collect=False):
             ratings[fx["t1"]], ratings[fx["t2"]],
             host_bonus_for(fx["t1"], fx["city"]),
             host_bonus_for(fx["t2"], fx["city"]),
+            t1=fx["t1"], t2=fx["t2"],
         )
         g = score_grid(l1, l2)
         cdfs.append((i1, i2, np.cumsum(g.ravel()), g.shape[0]))
@@ -290,6 +307,14 @@ def simulate(groups, fixtures, ratings, n_sims, rng, collect=False):
         cols = np.array([idx[t] for t in ts])
         order = np.argsort(-key[:, cols], axis=1)
         group_rank[g] = cols[order]   # (n_sims, 4)
+
+    # Position-count accumulator for group standings output
+    pos_counts = {g: np.zeros((4, nT), dtype=np.int64) for g in glabels}
+    for g, ts in groups.items():
+        cols = np.array([idx[t] for t in ts])
+        ranked = group_rank[g]          # (n_sims, 4) — team indices in rank order
+        for pos in range(4):
+            np.add.at(pos_counts[g][pos], ranked[:, pos], 1)
 
     thirds = np.stack([group_rank[g][:, 2] for g in glabels], axis=1)
     third_key = np.take_along_axis(key, thirds, axis=1)
@@ -363,7 +388,8 @@ def simulate(groups, fixtures, ratings, n_sims, rng, collect=False):
         "champ": champ_counts, "stages": stages,
         "advance": adv_counts, "win_group": wg_counts,
         "matches_ko": matches_ko, "exp_gf": exp_gf,
-        "group_rank": group_rank, "teams": teams, "idx": idx, "n": n_sims,
+        "group_rank": group_rank, "pos_counts": pos_counts,
+        "teams": teams, "idx": idx, "n": n_sims,
     }
 
 
@@ -396,6 +422,7 @@ def write_match_predictions(fixtures, ratings, groups_map, group_of):
             ratings[fx["t1"]], ratings[fx["t2"]],
             host_bonus_for(fx["t1"], fx["city"]),
             host_bonus_for(fx["t2"], fx["city"]),
+            t1=fx["t1"], t2=fx["t2"],
         )
         g = score_grid(l1, l2)
         p1, px, p2 = outcome_probs(g)
@@ -468,6 +495,7 @@ def write_group_predictions(fixtures, ratings, groups, group_of):
                 ratings[fx["t1"]], ratings[fx["t2"]],
                 host_bonus_for(fx["t1"], fx["city"]),
                 host_bonus_for(fx["t2"], fx["city"]),
+                t1=fx["t1"], t2=fx["t2"],
             )
             g = score_grid(l1, l2)
             p1, px, p2 = outcome_probs(g)
@@ -493,6 +521,7 @@ def write_group_predictions(fixtures, ratings, groups, group_of):
                 ratings[fx["t1"]], ratings[fx["t2"]],
                 host_bonus_for(fx["t1"], fx["city"]),
                 host_bonus_for(fx["t2"], fx["city"]),
+                t1=fx["t1"], t2=fx["t2"],
             )
             g = score_grid(l1, l2)
             p1, px, p2 = outcome_probs(g)
@@ -511,17 +540,145 @@ def write_group_predictions(fixtures, ratings, groups, group_of):
     print(f"  Wrote group predictions → {path}")
 
 
+def write_group_standings(stats, groups):
+    """Output probability-ranked group standings (25 pts per correct position)."""
+    teams = stats["teams"]
+    idx = stats["idx"]
+    n = stats["n"]
+    pos_counts = stats["pos_counts"]
+    rows = []
+    for grp in sorted(groups):
+        ts = groups[grp]
+        team_data = []
+        for t in ts:
+            i = idx[t]
+            probs = [pos_counts[grp][pos][i] / n for pos in range(4)]
+            mean_rank = sum((pos + 1) * probs[pos] for pos in range(4))
+            team_data.append((t, probs, mean_rank))
+        team_data.sort(key=lambda x: x[2])
+        for rank, (t, probs, mean_rank) in enumerate(team_data, 1):
+            rows.append({
+                "group": grp, "predicted_rank": rank, "team": t,
+                "p_pos1": round(probs[0], 4), "p_pos2": round(probs[1], 4),
+                "p_pos3": round(probs[2], 4), "p_pos4": round(probs[3], 4),
+                "mean_rank": round(mean_rank, 3),
+            })
+    path = os.path.join(OUT, "group_standings.csv")
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader(); w.writerows(rows)
+    print(f"  Wrote group standings → {path}")
+    return rows
+
+
+def write_ko_predictions(stats, ratings, groups):
+    """Generate picks for all predicted KO matches with stage-appropriate scoring."""
+    from bracket import BRACKET_2026, resolve_round_of_32
+    teams = stats["teams"]
+    idx = stats["idx"]
+    n = stats["n"]
+
+    # Build most-likely group outcomes from simulation
+    pos_counts = stats["pos_counts"]
+    pred_winner = {}
+    pred_runner = {}
+    pred_third = {}
+    for grp, ts in groups.items():
+        ranked = sorted(ts, key=lambda t: pos_counts[grp][0][idx[t]], reverse=True)
+        pred_winner[grp] = ranked[0]
+        ranked2 = sorted(ts, key=lambda t: pos_counts[grp][1][idx[t]], reverse=True)
+        pred_runner[grp] = ranked2[0]
+        ranked3 = sorted(ts, key=lambda t: pos_counts[grp][2][idx[t]], reverse=True)
+        pred_third[grp] = ranked3[0]
+
+    # Identify 8 best third-place teams by p(advance as third)
+    third_scores = {grp: stats["advance"][idx[pred_third[grp]]] / n for grp in sorted(groups)}
+    best8_groups = sorted(third_scores, key=lambda g: -third_scores[g])[:8]
+    adv_thirds = {grp: idx[pred_third[grp]] for grp in best8_groups}
+
+    w_idx = {grp: idx[pred_winner[grp]] for grp in groups}
+    r_idx = {grp: idx[pred_runner[grp]] for grp in groups}
+    third_idx = {grp: idx[pred_third[grp]] for grp in groups}
+
+    pairs = resolve_round_of_32(BRACKET_2026, w_idx, r_idx, best8_groups, third_idx)
+
+    stage_order = ["R32", "R16", "QF", "SF", "Final"]
+    rows = []
+    match_num = 1
+    current = pairs
+    for stage in stage_order:
+        pts_exact, pts_outcome = KO_SCORING[stage]
+        next_round = []
+        for a_i, b_i in current:
+            ta, tb = teams[a_i], teams[b_i]
+            l1, l2 = match_lambdas(
+                ratings[ta], ratings[tb],
+                CFG["host_adv_ko"].get(ta, 0.0) if ta in HOSTS else 0.0,
+                CFG["host_adv_ko"].get(tb, 0.0) if tb in HOSTS else 0.0,
+                ko=True, t1=ta, t2=tb,
+            )
+            g = score_grid(l1, l2)
+            p1, px, p2 = outcome_probs(g)
+            pick, ep, alts = best_pick(g, pts_exact=pts_exact, pts_outcome=pts_outcome)
+            rows.append({
+                "round": stage, "match": match_num,
+                "team1": ta, "team2": tb,
+                "optimal_pick": f"{pick[0]}-{pick[1]}",
+                "exp_pts": round(ep, 1),
+                "p_win1": round(p1, 3), "p_draw": round(px, 3), "p_win2": round(p2, 3),
+                "xG1": round(l1, 2), "xG2": round(l2, 2),
+                "top_alternatives": " | ".join(
+                    f"{a}-{b}({e:.0f}pts)" for (a, b), e in alts[1:4]
+                ),
+            })
+            # Advance most-likely team to next round
+            winner_i = a_i if p1 >= p2 else b_i
+            next_round.append(winner_i)
+            match_num += 1
+        if stage != "Final":
+            current = [(next_round[i], next_round[i + 1]) for i in range(0, len(next_round), 2)]
+
+    path = os.path.join(OUT, "ko_predictions.csv")
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader(); w.writerows(rows)
+    print(f"  Wrote KO predictions ({len(rows)} matches) → {path}")
+    return rows
+
+
 def write_topscorer_predictions(stats, fixtures, ratings, groups):
-    """Estimate expected tournament goals for each player/team."""
+    """Estimate expected tournament points per player using position multipliers."""
     teams = stats["teams"]
     n = stats["n"]
-    # Expected goals per team = group-stage goals + knockout stage goals
-    exp_group_g = stats["exp_gf"]
-    # Expected KO goals: avg goals per KO match * expected KO matches played
-    ko_gpg = CFG["total_base_ko"] * 0.55  # team goals in a KO game at average strength
-    exp_ko_g = stats["matches_ko"] / n * ko_gpg
+    idx = stats["idx"]
 
-    # Load golden boot odds
+    # Stage-indexed forward base pts per goal: group(8) R32(16) R16(24) QF(32) SF(40) F(48)
+    STAGE_PTS_FWD = [
+        ("group",  8,  3),   # (stage_name, fwd_pts_per_goal, games_in_stage)
+        ("R32",   16,  1),
+        ("R16",   24,  1),
+        ("QF",    32,  1),
+        ("SF",    40,  1),
+        ("F",     48,  1),
+    ]
+    POS_MULT = {"forward": 1.0, "midfielder": 2.0, "defender": 4.0, "gk": 4.0}
+    PLAYER_SHARE = 0.33   # top scorer's share of team goals
+
+    # Per-stage team scoring rates
+    stage_probs = {}
+    for stage_name, _, _ in STAGE_PTS_FWD:
+        if stage_name == "group":
+            # All 48 teams play group stage
+            stage_probs["group"] = np.ones(len(teams))
+        else:
+            stage_probs[stage_name] = stats["stages"][stage_name] / n
+
+    # Expected goals per game per team (group stage average)
+    exp_group_g = stats["exp_gf"]
+    group_games = 3.0
+    gpg = exp_group_g / group_games  # goals per game
+    ko_gpg = CFG["total_base_ko"] * 0.5  # rough team goals per KO game
+
     tb_rows = read_csv(os.path.join(DATA, "topscorer_odds.csv"))
     players = []
     seen = set()
@@ -535,25 +692,31 @@ def write_topscorer_predictions(stats, fixtures, ratings, groups):
             odds = float(r["decimal_odds"])
         except (ValueError, KeyError):
             odds = 99.0
-        i = stats["idx"].get(team)
+        i = idx.get(team)
         if i is None:
             continue
-        team_exp_g = float(exp_group_g[i]) + float(exp_ko_g[i])
-        # Crude individual share: assume top striker scores ~35% of team goals
-        # weighted by tournament penetration
+        pos = r.get("position", "forward").strip().lower()
+        mult = POS_MULT.get(pos, 1.0)
+
+        player_exp_pts = 0.0
+        for stage_name, base_fwd_pts, n_games in STAGE_PTS_FWD:
+            p_in_stage = float(stage_probs[stage_name][i])
+            rate = float(gpg[i]) if stage_name == "group" else ko_gpg
+            exp_goals = rate * n_games * PLAYER_SHARE
+            player_exp_pts += p_in_stage * exp_goals * base_fwd_pts * mult
+
         p_advance = stats["advance"][i] / n
-        p_deep = stats["stages"]["QF"][i] / n + stats["stages"]["SF"][i] / n * 0.5
-        personal_exp_g = team_exp_g * 0.33 * (1 + p_deep * 0.4)
         players.append({
-            "player": player, "team": team,
+            "player": player, "team": team, "position": pos,
             "golden_boot_odds": odds,
-            "p_champion_odds_implied": round(1.0 / odds, 4),
-            "team_p_advance_group": round(p_advance, 3),
-            "team_p_quarterfinal": round(stats["stages"]["QF"][i] / n, 3),
-            "team_exp_goals_total": round(team_exp_g, 2),
-            "player_exp_goals": round(personal_exp_g, 2),
+            "p_odds_implied": round(1.0 / odds, 4),
+            "position_multiplier": mult,
+            "team_p_advance": round(p_advance, 3),
+            "team_p_semifinal": round(stats["stages"]["SF"][i] / n, 3),
+            "team_p_final": round(stats["stages"]["F"][i] / n, 3),
+            "player_exp_pts": round(player_exp_pts, 1),
         })
-    players.sort(key=lambda x: -x["player_exp_goals"])
+    players.sort(key=lambda x: -x["player_exp_pts"])
     path = os.path.join(OUT, "topscorer_predictions.csv")
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(players[0]))
@@ -595,6 +758,8 @@ def main():
     match_rows = write_match_predictions(fixtures, blended, groups, group_of)
     champ_rows = write_champion_probs(stats, elo, blended, odds, group_of)
     write_group_predictions(fixtures, blended, groups, group_of)
+    standings_rows = write_group_standings(stats, groups)
+    ko_rows = write_ko_predictions(stats, blended, groups)
     scorer_rows = write_topscorer_predictions(stats, fixtures, blended, groups)
 
     # ── Final summary ──────────────────────────────────────────────────────
@@ -613,11 +778,17 @@ def main():
               f"(Final: {stats['stages']['F'][i]/n*100:.1f}%)")
 
     print("\nPREDICTED CHAMPION: " + top5[0])
-    print("\nTOP SCORER PREDICTIONS (top 6):")
-    for p in scorer_rows[:6]:
-        print(f"  {p['player']:<22} ({p['team']:<14}) "
-              f"xGoals={p['player_exp_goals']:.2f}  "
-              f"odds={p['golden_boot_odds']}")
+    print("\nTOP SCORER PREDICTIONS (top 8 by expected pts):")
+    for p in scorer_rows[:8]:
+        print(f"  {p['player']:<22} ({p['team']:<14})"
+              f" pos={p['position']:<11} mult={p['position_multiplier']}x"
+              f"  xPts={p['player_exp_pts']:.1f}  odds={p['golden_boot_odds']}")
+
+    print("\nKO FINAL PICK:")
+    for row in ko_rows:
+        if row["round"] == "Final":
+            print(f"  {row['team1']} vs {row['team2']}  →  {row['optimal_pick']}"
+                  f"  (E[pts]={row['exp_pts']})  alts: {row['top_alternatives']}")
 
     with open(os.path.join(OUT, "simulation_summary.json"), "w") as f:
         json.dump({
@@ -626,7 +797,12 @@ def main():
                 for t in sorted(teams_list,
                                 key=lambda t: -stats["champ"][idx[t]])[:15]
             },
-            "top_scorer_prediction": [p["player"] for p in scorer_rows[:6]],
+            "top_scorer_picks": [
+                {"player": p["player"], "team": p["team"],
+                 "position": p["position"], "exp_pts": p["player_exp_pts"]}
+                for p in scorer_rows[:8]
+            ],
+            "predicted_champion": top5[0],
         }, f, indent=2)
     print("\nDone. All outputs in worldcup2026/output/")
 

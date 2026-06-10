@@ -3,191 +3,191 @@
 ## Group A
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Mexico                       6.06  +3.02  6.03 ✓ Q
-2    Czechia                      3.77  -0.52  3.79 ✓ Q
-3    South Korea                  3.69  -0.65  3.73    (borderline 3rd)
-4    South Africa                 2.93  -1.84  3.26    ✗
+1    Mexico                       5.82  +2.55  5.59 ✓ Q
+2    South Korea                  3.98  -0.21  3.85 ✓ Q
+3    Czechia                      3.88  -0.35  3.78    (borderline 3rd)
+4    South Africa                 2.82  -1.99  3.16    ✗
 
 Group fixtures (optimal picks):
-  2026-06-11  Mexico                 2-1  South Africa            [W64% D21% L15%]  alts: 1-0, 2-0, 3-1
-  2026-06-11  South Korea            1-1  Czechia                 [W35% D29% L36%]  alts: 0-1, 1-2, 1-0
-  2026-06-18  Czechia                1-0  South Africa            [W44% D28% L28%]  alts: 2-1, 3-2, 4-3
-  2026-06-18  Mexico                 2-1  South Korea             [W58% D24% L18%]  alts: 1-0, 2-0, 3-2
-  2026-06-24  Czechia                1-2  Mexico                  [W19% D24% L57%]  alts: 0-1, 0-2, 2-3
-  2026-06-24  South Africa           0-1  South Korea             [W29% D28% L43%]  alts: 1-2, 2-3, 3-4
+  2026-06-11  Mexico                 2-1  South Africa            [W63% D21% L16%]  alts: 2-0, 1-0, 3-0
+  2026-06-11  South Korea            1-0  Czechia                 [W37% D28% L35%]  alts: 2-1, 2-0, 0-1
+  2026-06-18  Czechia                1-0  South Africa            [W46% D27% L27%]  alts: 2-1, 2-0, 3-1
+  2026-06-18  Mexico                 1-0  South Korea             [W53% D25% L22%]  alts: 2-1, 2-0, 3-1
+  2026-06-24  Czechia                0-1  Mexico                  [W22% D24% L54%]  alts: 1-2, 0-2, 1-3
+  2026-06-24  South Africa           0-1  South Korea             [W26% D26% L47%]  alts: 1-2, 0-2, 1-3
 
 ## Group B
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Switzerland                  5.33  +1.90  5.20 ✓ Q
-2    Canada                       5.28  +1.82  5.15 ✓ Q
-3    Bosnia and Herzegovina       3.36  -1.15  3.59    (borderline 3rd)
-4    Qatar                        2.51  -2.57  3.11    ✗
+1    Switzerland                  5.64  +2.35  5.48 ✓ Q
+2    Canada                       5.37  +1.93  5.21 ✓ Q
+3    Bosnia and Herzegovina       3.10  -1.63  3.40    (borderline 3rd)
+4    Qatar                        2.49  -2.65  3.04    ✗
 
 Group fixtures (optimal picks):
-  2026-06-12  Canada                 2-1  Bosnia and Herzegovina  [W54% D25% L21%]  alts: 1-0, 2-0, 3-2
-  2026-06-13  Qatar                  1-2  Switzerland             [W16% D22% L62%]  alts: 0-1, 0-2, 2-3
-  2026-06-18  Switzerland            2-1  Bosnia and Herzegovina  [W54% D25% L21%]  alts: 1-0, 2-0, 3-2
-  2026-06-18  Canada                 2-1  Qatar                   [W62% D22% L16%]  alts: 1-0, 2-0, 3-2
-  2026-06-24  Switzerland            1-1  Canada                  [W36% D29% L35%]  alts: 1-0, 2-1, 0-1
-  2026-06-24  Bosnia and Herzegovina 1-0  Qatar                   [W44% D28% L28%]  alts: 2-1, 3-2, 4-3
+  2026-06-12  Canada                 2-1  Bosnia and Herzegovina  [W58% D23% L19%]  alts: 1-0, 2-0, 3-1
+  2026-06-13  Qatar                  0-2  Switzerland             [W14% D20% L66%]  alts: 1-2, 0-1, 0-3
+  2026-06-18  Switzerland            2-1  Bosnia and Herzegovina  [W60% D22% L18%]  alts: 1-0, 2-0, 3-1
+  2026-06-18  Canada                 2-1  Qatar                   [W64% D21% L16%]  alts: 2-0, 1-0, 3-0
+  2026-06-24  Switzerland            1-0  Canada                  [W39% D28% L34%]  alts: 2-1, 2-0, 3-1
+  2026-06-24  Bosnia and Herzegovina 1-0  Qatar                   [W42% D27% L30%]  alts: 2-1, 2-0, 3-1
 
 ## Group C
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Brazil                       6.44  +3.92  6.63 ✓ Q
-2    Morocco                      5.29  +1.98  5.45 ✓ Q
-3    Scotland                     3.43  -1.18  3.91    (borderline 3rd)
-4    Haiti                        1.56  -4.73  2.52    ✗
+1    Brazil                       6.60  +4.15  6.73 ✓ Q
+2    Morocco                      5.28  +1.92  5.38 ✓ Q
+3    Scotland                     3.36  -1.34  3.79    (borderline 3rd)
+4    Haiti                        1.55  -4.73  2.44    ✗
 
 Group fixtures (optimal picks):
-  2026-06-13  Brazil                 1-0  Morocco                 [W47% D27% L25%]  alts: 2-1, 3-2, 2-0
-  2026-06-13  Haiti                  1-2  Scotland                [W19% D24% L57%]  alts: 0-1, 0-2, 2-3
-  2026-06-19  Scotland               1-2  Morocco                 [W20% D25% L55%]  alts: 0-1, 0-2, 2-3
-  2026-06-19  Brazil                 2-0  Haiti                   [W81% D13% L5%]  alts: 3-0, 3-1, 1-0
-  2026-06-24  Morocco                2-0  Haiti                   [W73% D17% L10%]  alts: 2-1, 1-0, 3-1
-  2026-06-24  Scotland               1-2  Brazil                  [W14% D21% L65%]  alts: 0-1, 0-2, 1-3
+  2026-06-13  Brazil                 1-0  Morocco                 [W50% D26% L24%]  alts: 2-1, 2-0, 3-1
+  2026-06-13  Haiti                  0-1  Scotland                [W20% D23% L57%]  alts: 1-2, 0-2, 1-3
+  2026-06-19  Scotland               0-1  Morocco                 [W20% D24% L56%]  alts: 1-2, 0-2, 1-3
+  2026-06-19  Brazil                 2-0  Haiti                   [W83% D12% L5%]  alts: 3-0, 1-0, 4-0
+  2026-06-24  Morocco                2-0  Haiti                   [W74% D17% L10%]  alts: 2-1, 1-0, 3-0
+  2026-06-24  Scotland               0-2  Brazil                  [W13% D19% L68%]  alts: 1-2, 0-1, 0-3
 
 ## Group D
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    United States                5.78  +2.55  5.65 ✓ Q
-2    Turkey                       4.11  +0.02  4.02 ✓ Q
-3    Australia                    3.56  -0.81  3.63    (borderline 3rd)
-4    Paraguay                     2.96  -1.75  3.28    ✗
+1    United States                5.72  +2.38  5.45 ✓ Q
+2    Turkey                       3.81  -0.45  3.69 ✓ Q
+3    Australia                    3.61  -0.75  3.56    (borderline 3rd)
+4    Paraguay                     3.31  -1.18  3.38    ✗
 
 Group fixtures (optimal picks):
-  2026-06-12  United States          2-1  Paraguay                [W61% D22% L16%]  alts: 1-0, 2-0, 3-2
-  2026-06-13  Turkey                 1-0  Australia               [W40% D29% L31%]  alts: 2-1, 3-2, 4-3
-  2026-06-19  United States          2-1  Australia               [W56% D25% L20%]  alts: 1-0, 2-0, 3-2
-  2026-06-20  Turkey                 1-0  Paraguay                [W46% D28% L26%]  alts: 2-1, 3-2, 2-0
-  2026-06-25  Turkey                 1-2  United States           [W23% D26% L51%]  alts: 0-1, 2-3, 0-2
-  2026-06-25  Paraguay               0-1  Australia               [W30% D29% L41%]  alts: 1-2, 2-3, 3-4
+  2026-06-12  United States          2-1  Paraguay                [W58% D23% L19%]  alts: 1-0, 2-0, 3-1
+  2026-06-13  Turkey                 1-0  Australia               [W38% D28% L34%]  alts: 2-1, 2-0, 3-1
+  2026-06-19  United States          1-0  Australia               [W55% D24% L21%]  alts: 2-1, 2-0, 3-1
+  2026-06-20  Turkey                 1-0  Paraguay                [W41% D28% L32%]  alts: 2-1, 2-0, 3-1
+  2026-06-25  Turkey                 0-1  United States           [W22% D24% L54%]  alts: 1-2, 0-2, 1-3
+  2026-06-25  Paraguay               0-1  Australia               [W34% D28% L39%]  alts: 1-2, 0-2, 1-3
 
 ## Group E
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Germany                      6.34  +3.72  6.48 ✓ Q
-2    Ecuador                      5.04  +1.56  5.16 ✓ Q
-3    Ivory Coast                  3.74  -0.60  4.11    (borderline 3rd)
-4    Curaçao                      1.56  -4.68  2.55    ✗
+1    Germany                      6.52  +3.99  6.62 ✓ Q
+2    Ecuador                      5.28  +1.91  5.36 ✓ Q
+3    Ivory Coast                  3.38  -1.28  3.79    (borderline 3rd)
+4    Curaçao                      1.60  -4.61  2.48    ✗
 
 Group fixtures (optimal picks):
-  2026-06-14  Germany                2-0  Curaçao                 [W80% D14% L6%]  alts: 3-1, 3-0, 2-1
-  2026-06-14  Ivory Coast            1-2  Ecuador                 [W24% D27% L49%]  alts: 0-1, 2-3, 0-2
-  2026-06-20  Germany                2-1  Ivory Coast             [W61% D22% L16%]  alts: 1-0, 2-0, 3-2
-  2026-06-20  Ecuador                2-0  Curaçao                 [W71% D18% L11%]  alts: 2-1, 1-0, 3-1
-  2026-06-25  Ecuador                1-2  Germany                 [W24% D27% L49%]  alts: 0-1, 2-3, 0-2
-  2026-06-25  Curaçao                1-2  Ivory Coast             [W17% D23% L60%]  alts: 0-1, 0-2, 2-3
+  2026-06-14  Germany                2-0  Curaçao                 [W82% D13% L6%]  alts: 3-0, 1-0, 2-1
+  2026-06-14  Ivory Coast            0-1  Ecuador                 [W20% D24% L56%]  alts: 1-2, 0-2, 1-3
+  2026-06-20  Germany                2-0  Ivory Coast             [W67% D19% L14%]  alts: 2-1, 1-0, 3-0
+  2026-06-20  Ecuador                2-0  Curaçao                 [W73% D17% L10%]  alts: 2-1, 1-0, 3-0
+  2026-06-25  Ecuador                0-1  Germany                 [W25% D26% L49%]  alts: 1-2, 0-2, 1-3
+  2026-06-25  Curaçao                0-1  Ivory Coast             [W20% D23% L57%]  alts: 1-2, 0-2, 1-3
 
 ## Group F
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Netherlands                  5.76  +2.59  5.68 ✓ Q
-2    Japan                        4.85  +1.17  4.76 ✓ Q
-3    Sweden                       3.53  -0.89  3.72    (borderline 3rd)
-4    Tunisia                      2.36  -2.87  3.03    ✗
+1    Netherlands                  5.96  +2.84  5.82 ✓ Q
+2    Japan                        4.89  +1.17  4.74 ✓ Q
+3    Sweden                       3.31  -1.28  3.51    (borderline 3rd)
+4    Tunisia                      2.43  -2.74  3.00    ✗
 
 Group fixtures (optimal picks):
-  2026-06-14  Netherlands            1-0  Japan                   [W44% D28% L28%]  alts: 2-1, 3-2, 4-3
-  2026-06-14  Sweden                 1-0  Tunisia                 [W48% D27% L25%]  alts: 2-1, 3-2, 2-0
-  2026-06-20  Netherlands            2-1  Sweden                  [W57% D24% L19%]  alts: 1-0, 2-0, 3-2
-  2026-06-21  Japan                  2-1  Tunisia                 [W60% D23% L17%]  alts: 1-0, 2-0, 3-2
-  2026-06-25  Japan                  1-0  Sweden                  [W48% D27% L25%]  alts: 2-1, 3-2, 2-0
-  2026-06-25  Tunisia                1-2  Netherlands             [W13% D20% L67%]  alts: 0-2, 0-1, 1-3
+  2026-06-14  Netherlands            1-0  Japan                   [W47% D26% L27%]  alts: 2-1, 2-0, 3-1
+  2026-06-14  Sweden                 1-0  Tunisia                 [W45% D27% L28%]  alts: 2-1, 2-0, 3-1
+  2026-06-20  Netherlands            2-1  Sweden                  [W61% D22% L17%]  alts: 2-0, 1-0, 3-0
+  2026-06-21  Japan                  2-1  Tunisia                 [W60% D22% L18%]  alts: 1-0, 2-0, 3-1
+  2026-06-25  Japan                  1-0  Sweden                  [W51% D25% L23%]  alts: 2-1, 2-0, 3-1
+  2026-06-25  Tunisia                0-2  Netherlands             [W13% D19% L69%]  alts: 1-2, 0-1, 0-3
 
 ## Group G
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Belgium                      6.52  +3.88  6.70 ✓ Q
-2    Iran                         4.43  +0.42  4.53 ✓ Q
-3    New Zealand                  2.99  -1.65  3.29    (borderline 3rd)
-4    Egypt                        2.63  -2.64  3.23    ✗
+1    Belgium                      6.66  +4.05  6.77 ✓ Q
+2    Iran                         4.41  +0.31  4.47 ✓ Q
+3    New Zealand                  2.91  -1.77  3.20    (borderline 3rd)
+4    Egypt                        2.68  -2.60  3.22    ✗
 
 Group fixtures (optimal picks):
-  2026-06-15  Belgium                2-1  Egypt                   [W69% D19% L12%]  alts: 2-0, 1-0, 3-1
-  2026-06-15  Iran                   2-1  New Zealand             [W53% D26% L22%]  alts: 1-0, 3-2, 2-0
-  2026-06-21  Belgium                2-1  Iran                    [W59% D23% L17%]  alts: 1-0, 2-0, 3-2
-  2026-06-21  New Zealand            0-1  Egypt                   [W30% D29% L41%]  alts: 1-2, 2-3, 3-4
-  2026-06-26  Egypt                  1-2  Belgium                 [W12% D19% L69%]  alts: 0-2, 0-1, 1-3
-  2026-06-26  New Zealand            1-2  Iran                    [W22% D26% L53%]  alts: 0-1, 2-3, 0-2
+  2026-06-15  Belgium                2-0  Egypt                   [W70% D18% L12%]  alts: 2-1, 1-0, 3-0
+  2026-06-15  Iran                   1-0  New Zealand             [W54% D24% L22%]  alts: 2-1, 2-0, 3-1
+  2026-06-21  Belgium                2-1  Iran                    [W63% D21% L16%]  alts: 2-0, 1-0, 3-0
+  2026-06-21  New Zealand            0-1  Egypt                   [W28% D27% L45%]  alts: 1-2, 0-2, 1-3
+  2026-06-26  Egypt                  0-2  Belgium                 [W12% D18% L70%]  alts: 1-2, 0-1, 0-3
+  2026-06-26  New Zealand            0-1  Iran                    [W22% D24% L54%]  alts: 1-2, 0-2, 1-3
 
 ## Group H
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Spain                        7.06  +5.15  7.50 ✓ Q
-2    Uruguay                      5.13  +1.65  5.44 ✓ Q
-3    Saudi Arabia                 2.90  -2.29  3.43    (borderline 3rd)
-4    Cape Verde                   1.73  -4.51  2.52    ✗
+1    Spain                        7.05  +5.04  7.36 ✓ Q
+2    Uruguay                      5.15  +1.66  5.36 ✓ Q
+3    Saudi Arabia                 3.05  -2.00  3.51    (borderline 3rd)
+4    Cape Verde                   1.61  -4.71  2.40    ✗
 
 Group fixtures (optimal picks):
-  2026-06-15  Spain                  2-0  Cape Verde              [W85% D11% L4%]  alts: 3-0, 3-1, 1-0
-  2026-06-15  Saudi Arabia           1-2  Uruguay                 [W18% D23% L59%]  alts: 0-1, 0-2, 2-3
-  2026-06-21  Spain                  2-0  Saudi Arabia            [W76% D16% L8%]  alts: 2-1, 3-1, 1-0
-  2026-06-21  Uruguay                2-0  Cape Verde              [W71% D18% L11%]  alts: 2-1, 1-0, 3-1
-  2026-06-26  Cape Verde             1-2  Saudi Arabia            [W24% D27% L49%]  alts: 0-1, 2-3, 0-2
-  2026-06-26  Spain                  2-1  Uruguay                 [W57% D24% L19%]  alts: 1-0, 2-0, 3-2
+  2026-06-15  Spain                  2-0  Cape Verde              [W86% D10% L4%]  alts: 3-0, 4-0, 1-0
+  2026-06-15  Saudi Arabia           1-2  Uruguay                 [W19% D23% L58%]  alts: 0-1, 0-2, 1-3
+  2026-06-21  Spain                  2-0  Saudi Arabia            [W75% D16% L9%]  alts: 3-0, 2-1, 1-0
+  2026-06-21  Uruguay                2-0  Cape Verde              [W72% D17% L11%]  alts: 2-1, 1-0, 3-0
+  2026-06-26  Cape Verde             0-1  Saudi Arabia            [W22% D25% L53%]  alts: 1-2, 0-2, 1-3
+  2026-06-26  Spain                  1-0  Uruguay                 [W57% D23% L20%]  alts: 2-1, 2-0, 3-1
 
 ## Group I
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    France                       6.34  +3.68  6.46 ✓ Q
-2    Norway                       4.67  +0.94  4.78 ✓ Q
-3    Senegal                      4.04  -0.09  4.28    (borderline 3rd)
-4    Iraq                         1.61  -4.53  2.61    ✗
+1    France                       6.41  +3.77  6.45 ✓ Q
+2    Norway                       4.83  +1.19  4.88 ✓ Q
+3    Senegal                      4.04  -0.09  4.26    (borderline 3rd)
+4    Iraq                         1.46  -4.87  2.45    ✗
 
 Group fixtures (optimal picks):
-  2026-06-16  France                 2-1  Senegal                 [W58% D24% L18%]  alts: 1-0, 2-0, 3-2
-  2026-06-16  Iraq                   1-2  Norway                  [W13% D20% L67%]  alts: 0-2, 0-1, 1-3
-  2026-06-22  France                 2-0  Iraq                    [W80% D14% L6%]  alts: 3-1, 3-0, 2-1
-  2026-06-22  Norway                 1-0  Senegal                 [W42% D29% L30%]  alts: 2-1, 3-2, 4-3
-  2026-06-26  Norway                 1-2  France                  [W22% D26% L52%]  alts: 0-1, 2-3, 0-2
-  2026-06-26  Senegal                2-1  Iraq                    [W62% D22% L16%]  alts: 1-0, 2-0, 3-2
+  2026-06-16  France                 2-1  Senegal                 [W60% D22% L18%]  alts: 1-0, 2-0, 3-1
+  2026-06-16  Iraq                   0-2  Norway                  [W11% D18% L71%]  alts: 1-2, 0-1, 0-3
+  2026-06-22  France                 2-0  Iraq                    [W82% D13% L5%]  alts: 3-0, 1-0, 2-1
+  2026-06-22  Norway                 1-0  Senegal                 [W44% D27% L29%]  alts: 2-1, 2-0, 3-1
+  2026-06-26  Norway                 0-1  France                  [W23% D25% L52%]  alts: 1-2, 0-2, 1-3
+  2026-06-26  Senegal                2-0  Iraq                    [W65% D20% L15%]  alts: 2-1, 1-0, 3-0
 
 ## Group J
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Argentina                    6.95  +4.90  7.34 ✓ Q
-2    Austria                      4.76  +1.04  5.01 ✓ Q
-3    Algeria                      3.55  -1.03  3.98    (borderline 3rd)
-4    Jordan                       1.51  -4.92  2.44    ✗
+1    Argentina                    7.04  +5.00  7.35 ✓ Q
+2    Austria                      4.82  +1.08  4.99 ✓ Q
+3    Algeria                      3.42  -1.29  3.79    (borderline 3rd)
+4    Jordan                       1.55  -4.79  2.40    ✗
 
 Group fixtures (optimal picks):
-  2026-06-16  Argentina              2-1  Algeria                 [W69% D19% L12%]  alts: 2-0, 1-0, 3-1
-  2026-06-16  Austria                2-1  Jordan                  [W70% D19% L12%]  alts: 2-0, 1-0, 3-1
-  2026-06-21  Argentina              2-1  Austria                 [W59% D23% L18%]  alts: 1-0, 2-0, 3-2
-  2026-06-22  Algeria                2-1  Jordan                  [W59% D23% L18%]  alts: 1-0, 2-0, 3-2
-  2026-06-25  Argentina              2-0  Jordan                  [W86% D11% L4%]  alts: 3-0, 3-1, 1-0
-  2026-06-25  Algeria                0-1  Austria                 [W25% D27% L48%]  alts: 1-2, 2-3, 0-2
+  2026-06-16  Argentina              2-0  Algeria                 [W72% D17% L11%]  alts: 2-1, 1-0, 3-0
+  2026-06-16  Austria                2-0  Jordan                  [W70% D18% L12%]  alts: 2-1, 1-0, 3-0
+  2026-06-21  Argentina              2-1  Austria                 [W60% D22% L18%]  alts: 1-0, 2-0, 3-1
+  2026-06-22  Algeria                2-1  Jordan                  [W58% D23% L19%]  alts: 1-0, 2-0, 3-1
+  2026-06-25  Argentina              2-0  Jordan                  [W86% D10% L4%]  alts: 3-0, 4-0, 1-0
+  2026-06-25  Algeria                0-1  Austria                 [W24% D25% L51%]  alts: 1-2, 0-2, 1-3
 
 ## Group K
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    Portugal                     6.31  +3.66  6.48 ✓ Q
-2    Colombia                     5.43  +2.17  5.57 ✓ Q
-3    DR Congo                     2.94  -2.06  3.45    (borderline 3rd)
-4    Uzbekistan                   1.99  -3.78  2.78    ✗
+1    Portugal                     6.42  +3.79  6.51 ✓ Q
+2    Colombia                     5.54  +2.31  5.61 ✓ Q
+3    DR Congo                     2.68  -2.55  3.19    (borderline 3rd)
+4    Uzbekistan                   2.11  -3.56  2.78    ✗
 
 Group fixtures (optimal picks):
-  2026-06-17  Portugal               2-1  DR Congo                [W68% D19% L12%]  alts: 2-0, 1-0, 3-1
-  2026-06-17  Uzbekistan             1-2  Colombia                [W12% D19% L70%]  alts: 0-2, 0-1, 1-3
-  2026-06-23  Portugal               2-0  Uzbekistan              [W76% D16% L8%]  alts: 2-1, 3-1, 1-0
-  2026-06-23  Colombia               2-1  DR Congo                [W61% D23% L17%]  alts: 1-0, 2-0, 3-2
-  2026-06-27  Colombia               0-1  Portugal                [W27% D28% L45%]  alts: 1-2, 2-3, 3-4
-  2026-06-27  DR Congo               1-0  Uzbekistan              [W46% D28% L26%]  alts: 2-1, 3-2, 2-0
+  2026-06-17  Portugal               2-0  DR Congo                [W72% D17% L11%]  alts: 2-1, 1-0, 3-0
+  2026-06-17  Uzbekistan             0-2  Colombia                [W12% D18% L70%]  alts: 1-2, 0-1, 0-3
+  2026-06-23  Portugal               2-0  Uzbekistan              [W77% D15% L8%]  alts: 3-0, 2-1, 1-0
+  2026-06-23  Colombia               2-0  DR Congo                [W65% D20% L15%]  alts: 2-1, 1-0, 3-0
+  2026-06-27  Colombia               0-1  Portugal                [W28% D27% L45%]  alts: 1-2, 0-2, 1-3
+  2026-06-27  DR Congo               1-0  Uzbekistan              [W42% D27% L30%]  alts: 2-1, 2-0, 3-1
 
 ## Group L
 Pos  Team                         xPts    xGD   xGF
 ------------------------------------------------
-1    England                      6.96  +4.97  7.37 ✓ Q
-2    Croatia                      5.29  +1.96  5.61 ✓ Q
-3    Ghana                        2.69  -2.67  3.26    (borderline 3rd)
-4    Panama                       1.84  -4.27  2.59    ✗
+1    England                      7.07  +5.13  7.39 ✓ Q
+2    Croatia                      5.42  +2.17  5.69 ✓ Q
+3    Ghana                        2.63  -2.83  3.15    (borderline 3rd)
+4    Panama                       1.76  -4.47  2.45    ✗
 
 Group fixtures (optimal picks):
-  2026-06-17  England                2-1  Croatia                 [W54% D25% L21%]  alts: 1-0, 2-0, 3-2
-  2026-06-17  Ghana                  1-0  Panama                  [W45% D28% L27%]  alts: 2-1, 3-2, 2-0
-  2026-06-23  England                2-0  Ghana                   [W77% D15% L7%]  alts: 3-1, 2-1, 1-0
-  2026-06-23  Panama                 0-2  Croatia                 [W11% D18% L71%]  alts: 1-2, 0-1, 1-3
-  2026-06-27  England                2-0  Panama                  [W84% D12% L4%]  alts: 3-0, 3-1, 1-0
-  2026-06-27  Croatia                2-1  Ghana                   [W63% D22% L15%]  alts: 1-0, 2-0, 3-1
+  2026-06-17  England                1-0  Croatia                 [W54% D24% L21%]  alts: 2-1, 2-0, 3-1
+  2026-06-17  Ghana                  1-0  Panama                  [W46% D27% L27%]  alts: 2-1, 2-0, 3-1
+  2026-06-23  England                2-0  Ghana                   [W79% D14% L7%]  alts: 3-0, 1-0, 2-1
+  2026-06-23  Panama                 0-2  Croatia                 [W10% D17% L74%]  alts: 1-2, 0-1, 0-3
+  2026-06-27  England                2-0  Panama                  [W86% D11% L4%]  alts: 3-0, 1-0, 4-0
+  2026-06-27  Croatia                2-0  Ghana                   [W66% D20% L14%]  alts: 2-1, 1-0, 3-0

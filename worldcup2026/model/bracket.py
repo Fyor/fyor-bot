@@ -85,9 +85,9 @@ BRACKET_2026["r32"] = [
     (("W", "F"), ("R", "H")),       # R32 match 7
     (("W", "H"), ("T", "EGHIJ")),   # R32 match 8
     # Pod 3 — Third quarter-bracket (QF3 side)
-    (("W", "I"), ("R", "K")),       # R32 match 9
+    (("W", "I"), ("T", "CEFGHI")),   # R32 match 9
     (("W", "K"), ("T", "ABCIJKL")), # R32 match 10
-    (("W", "J"), ("R", "L")),       # R32 match 11
+    (("W", "J"), ("T", "CEFGHJ")),  # R32 match 11
     (("W", "L"), ("T", "ABCIJKL")), # R32 match 12
     # Pod 4 — Fourth quarter-bracket (QF4 side)
     (("R", "A"), ("R", "B")),       # R32 match 13
