@@ -1,0 +1,73 @@
+match_number,date,group,team1,team2,city
+1,2026-06-11,A,Mexico,South Africa,Mexico City
+2,2026-06-11,A,South Korea,Czechia,Guadalajara
+3,2026-06-12,B,Canada,Bosnia and Herzegovina,Toronto
+4,2026-06-12,D,United States,Paraguay,Inglewood
+5,2026-06-13,B,Qatar,Switzerland,Santa Clara
+6,2026-06-13,C,Brazil,Morocco,East Rutherford
+7,2026-06-13,C,Haiti,Scotland,Foxborough
+8,2026-06-13,D,Turkey,Australia,Seattle
+9,2026-06-14,E,Germany,Curaçao,Houston
+10,2026-06-14,F,Netherlands,Japan,Arlington
+11,2026-06-14,E,Ivory Coast,Ecuador,Philadelphia
+12,2026-06-14,F,Sweden,Tunisia,Guadalajara
+13,2026-06-15,H,Spain,Cape Verde,Atlanta
+14,2026-06-15,G,Belgium,Egypt,Seattle
+15,2026-06-15,H,Saudi Arabia,Uruguay,Miami
+16,2026-06-15,G,Iran,New Zealand,Inglewood
+17,2026-06-16,I,France,Senegal,East Rutherford
+18,2026-06-16,I,Iraq,Norway,Foxborough
+19,2026-06-16,J,Argentina,Algeria,Kansas City
+20,2026-06-16,J,Austria,Jordan,Santa Clara
+21,2026-06-17,K,Portugal,DR Congo,Houston
+22,2026-06-17,K,Uzbekistan,Colombia,Guadalajara
+23,2026-06-17,L,England,Croatia,Arlington
+24,2026-06-17,L,Ghana,Panama,Toronto
+25,2026-06-18,A,Czechia,South Africa,Atlanta
+26,2026-06-18,A,Mexico,South Korea,Guadalajara
+27,2026-06-18,B,Switzerland,Bosnia and Herzegovina,Kansas City
+28,2026-06-18,B,Canada,Qatar,Vancouver
+29,2026-06-19,C,Scotland,Morocco,Foxborough
+30,2026-06-19,C,Brazil,Haiti,Philadelphia
+31,2026-06-19,D,United States,Australia,Seattle
+32,2026-06-20,D,Turkey,Paraguay,Santa Clara
+33,2026-06-20,E,Germany,Ivory Coast,Toronto
+34,2026-06-20,E,Ecuador,Curaçao,Miami
+35,2026-06-20,F,Netherlands,Sweden,Houston
+36,2026-06-21,F,Japan,Tunisia,Guadalajara
+37,2026-06-21,G,Belgium,Iran,Inglewood
+38,2026-06-21,G,New Zealand,Egypt,Vancouver
+39,2026-06-21,H,Spain,Saudi Arabia,Atlanta
+40,2026-06-21,H,Uruguay,Cape Verde,Miami
+41,2026-06-21,J,Argentina,Austria,Arlington
+42,2026-06-22,I,France,Iraq,Philadelphia
+43,2026-06-22,I,Norway,Senegal,Toronto
+44,2026-06-22,J,Algeria,Jordan,Kansas City
+45,2026-06-23,K,Portugal,Uzbekistan,Houston
+46,2026-06-23,K,Colombia,DR Congo,Inglewood
+47,2026-06-23,L,England,Ghana,Foxborough
+48,2026-06-23,L,Panama,Croatia,Foxborough
+49,2026-06-24,A,Czechia,Mexico,Mexico City
+50,2026-06-24,A,South Africa,South Korea,Guadalajara
+51,2026-06-24,B,Switzerland,Canada,Vancouver
+52,2026-06-24,B,Bosnia and Herzegovina,Qatar,Seattle
+53,2026-06-24,C,Morocco,Haiti,Atlanta
+54,2026-06-24,C,Scotland,Brazil,Miami
+55,2026-06-25,D,Turkey,United States,Kansas City
+56,2026-06-25,D,Paraguay,Australia,Inglewood
+57,2026-06-25,E,Ecuador,Germany,Arlington
+58,2026-06-25,E,Curaçao,Ivory Coast,Dallas
+59,2026-06-25,F,Japan,Sweden,Seattle
+60,2026-06-25,F,Tunisia,Netherlands,Houston
+61,2026-06-25,J,Argentina,Jordan,Miami
+62,2026-06-25,J,Algeria,Austria,Santa Clara
+63,2026-06-26,G,Egypt,Belgium,Kansas City
+64,2026-06-26,G,New Zealand,Iran,Vancouver
+65,2026-06-26,H,Cape Verde,Saudi Arabia,Guadalajara
+66,2026-06-26,H,Spain,Uruguay,Miami
+67,2026-06-26,I,Norway,France,East Rutherford
+68,2026-06-26,I,Senegal,Iraq,Foxborough
+69,2026-06-27,K,Colombia,Portugal,Miami
+70,2026-06-27,K,DR Congo,Uzbekistan,Atlanta
+71,2026-06-27,L,England,Panama,East Rutherford
+72,2026-06-27,L,Croatia,Ghana,Philadelphia
