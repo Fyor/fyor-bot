@@ -1,0 +1,29 @@
+group,team,decimal_odds,bookmaker,quote_date
+A,Mexico,1.71,FanDuel,2026-06-08
+B,Switzerland,1.80,FanDuel,2026-06-08
+B,Canada,2.70,FanDuel,2026-06-08
+C,Brazil,1.30,FanDuel,2026-06-08
+C,Brazil,1.29,Oddschecker US insight (opening line),2026-06-08
+D,USA,2.38,FanDuel (via FOX Sports),2026-06-08
+D,Turkey,2.75,FanDuel (via FOX Sports),2026-06-08
+D,Paraguay,5.00,FanDuel (via FOX Sports),2026-06-08
+D,Australia,9.00,FanDuel (via FOX Sports),2026-06-08
+E,Germany,1.37,FanDuel,2026-06-08
+F,Netherlands,1.77,FanDuel,2026-06-08
+F,Japan,3.80,FanDuel,2026-06-08
+G,Belgium,1.44,FanDuel,2026-06-08
+G,Egypt,4.33,FanDuel,2026-06-08
+G,Iran,6.50,FanDuel,2026-06-08
+H,Spain,1.24,FanDuel,2026-06-08
+I,France,1.48,FanDuel,2026-06-08
+J,Argentina,1.34,FanDuel,2026-06-08
+K,Portugal,1.48,Oddschecker US insight (opening line),2026-06-10
+K,Portugal,1.40,OddsShark,2026-06-08
+K,Colombia,3.20,Oddschecker US insight (opening line),2026-06-10
+K,DR Congo,12.00,Oddschecker US insight (opening line),2026-06-10
+K,Uzbekistan,29.00,Oddschecker US insight (opening line),2026-06-10
+L,England,1.31,OddsShark,2026-06-08
+L,England,1.32,Sportscasting (opening line),2026-06-08
+L,Croatia,4.33,OddsShark,2026-06-08
+L,Ghana,11.00,OddsShark,2026-06-08
+L,Panama,51.00,OddsShark,2026-06-08
