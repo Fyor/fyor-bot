@@ -1,69 +1,69 @@
 {
   "top_champion": {
-    "Spain": 0.1848,
-    "France": 0.1358,
-    "Argentina": 0.1074,
-    "England": 0.101,
-    "Brazil": 0.0861,
-    "Portugal": 0.073,
-    "Germany": 0.0552,
-    "Netherlands": 0.0375,
-    "Colombia": 0.027,
-    "Belgium": 0.0256,
-    "Norway": 0.0234,
-    "United States": 0.0209,
-    "Morocco": 0.0172,
-    "Uruguay": 0.0146,
-    "Mexico": 0.0134
+    "Spain": 0.1858,
+    "France": 0.1357,
+    "Argentina": 0.1071,
+    "England": 0.1006,
+    "Brazil": 0.0862,
+    "Portugal": 0.0736,
+    "Germany": 0.0556,
+    "Netherlands": 0.0388,
+    "Belgium": 0.0266,
+    "Colombia": 0.0264,
+    "Norway": 0.0225,
+    "United States": 0.0211,
+    "Morocco": 0.0182,
+    "Uruguay": 0.0139,
+    "Mexico": 0.0126
   },
   "top_scorer_picks": [
     {
       "player": "Jude Bellingham",
       "team": "England",
       "position": "midfielder",
-      "exp_pts": 91.6
+      "exp_pts": 91.5
     },
     {
       "player": "Jamal Musiala",
       "team": "Germany",
       "position": "midfielder",
-      "exp_pts": 83.3
+      "exp_pts": 83.7
     },
     {
       "player": "Christian Pulisic",
       "team": "United States",
       "position": "midfielder",
-      "exp_pts": 68.3
+      "exp_pts": 69.7
     },
     {
       "player": "Mikel Oyarzabal",
       "team": "Spain",
       "position": "forward",
-      "exp_pts": 52.7
+      "exp_pts": 53.2
     },
     {
       "player": "Lamine Yamal",
       "team": "Spain",
       "position": "forward",
-      "exp_pts": 52.7
-    },
-    {
-      "player": "Lionel Messi",
-      "team": "Argentina",
-      "position": "forward",
-      "exp_pts": 46.0
+      "exp_pts": 53.2
     },
     {
       "player": "Vinicius Junior",
       "team": "Brazil",
       "position": "forward",
-      "exp_pts": 46.0
+      "exp_pts": 46.5
     },
     {
       "player": "Raphinha",
       "team": "Brazil",
       "position": "forward",
-      "exp_pts": 46.0
+      "exp_pts": 46.5
+    },
+    {
+      "player": "Lionel Messi",
+      "team": "Argentina",
+      "position": "forward",
+      "exp_pts": 45.9
     }
   ],
   "predicted_champion": "Spain"
