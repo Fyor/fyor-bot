@@ -244,7 +244,76 @@ Even in the tightest game, picking the draw costs ~2 expected points. A draw pic
 
 ---
 
-## KNOCKOUT ROUND PREDICTIONS (reference — fill in when bracket is known)
+## GROUP STAGE RESULTS vs PREDICTIONS (actual outcomes)
+
+**Overall accuracy: 44/72 correct outcomes (61%), 18 exact scores (25%)**  
+**Estimated points earned: ~2,440 / 4,440 possible (55%)**
+
+| Group | Predicted order | Actual order | Result |
+|-------|----------------|-------------|--------|
+| A | Mexico, **Czechia**, South Korea, **South Africa** | Mexico, **South Africa**, South Korea, **Czechia** | 50/100 |
+| B | Switzerland, Canada, Bosnia, Qatar | Switzerland, Canada, Bosnia, Qatar | **100/100 ✓** |
+| C | Brazil, Morocco, Scotland, Haiti | Brazil, Morocco, Scotland, Haiti | **100/100 ✓** |
+| D | USA, **Turkey**, **Australia**, **Paraguay** | USA, **Australia**, **Paraguay**, **Turkey** | 25/100 |
+| E | Germany, **Ecuador**, **Ivory Coast**, Curaçao | Germany, **Ivory Coast**, **Ecuador**, Curaçao | 50/100 |
+| F | Netherlands, Japan, Sweden, Tunisia | Netherlands, Japan, Sweden, Tunisia | **100/100 ✓** |
+| G | Belgium, **Iran**, **Egypt**, New Zealand | Belgium, **Egypt**, **Iran**, New Zealand | 50/100 |
+| H | Spain, **Uruguay**, **Saudi Arabia**, **Cape Verde** | Spain, **Cape Verde**, **Uruguay**, **Saudi Arabia** | 25/100 |
+| I | France, Norway, Senegal, Iraq | France, Norway, Senegal, Iraq | **100/100 ✓** |
+| J | Argentina, Austria, Algeria, Jordan | Argentina, Austria, Algeria, Jordan | **100/100 ✓** |
+| K | **Portugal**, **Colombia**, DR Congo, Uzbekistan | **Colombia**, **Portugal**, DR Congo, Uzbekistan | 50/100 |
+| L | England, Croatia, Ghana, Panama | England, Croatia, Ghana, Panama | **100/100 ✓** |
+
+**6 of 12 groups predicted perfectly.** Key surprises: Turkey collapsed (4th in Group D), Cape Verde remarkable (drew all 3, qualified 2nd in H), Ecuador upset Germany, Group G had 4 draws.
+
+**Notable misses:** 24 wrong-direction picks, the biggest cluster being Group G (Belgium vs Egypt/Iran: 4 draws) and Group H (Spain 0-0 Cape Verde, multiple draws). The model under-predicted draws in matches where teams were content to hold a point — classic cup-tie mentality.
+
+---
+
+## ROUND OF 32 — UPDATED PICKS (ratings recalibrated from actual results)
+
+**Updated model:** Original ratings blended 70% toward Elo-adjusted-from-actual-results.  
+**Notable rating changes:** France ▲14 | Switzerland ▲13 | Mexico ▲19 | Cape Verde ▲20 | Belgium ▼11 | Uruguay ▼17 | Germany ▼10  
+**Scoring: Exact=90 / Outcome=60 / Incorrect=0. Predict score including extra time (max 120 mins).**
+
+| Date | Team 1 | **Pick** | Team 2 | E[pts] | W/D/L |
+|------|--------|----------|--------|--------|-------|
+| Jun 28 | South Africa | **0-1** | Canada | 36.9 | 20/25/55% |
+| Jun 29 | Brazil | **1-0** | Japan | 33.1 | 49/27/24% |
+| Jun 29 | Germany | **1-0** | Paraguay | 44.1 | 67/20/13% |
+| Jun 29 | Netherlands | **1-0** | Morocco | 32.0 | 47/27/26% |
+| Jun 30 | Ivory Coast | **0-1** | Norway | 41.6 | 15/22/64% |
+| Jun 30 | France | **2-0** | Sweden | 45.3 | 70/19/12% |
+| Jun 30 | Mexico | **1-0** | Ecuador | 26.8 | 39/29/32% |
+| Jul 1 | United States | **1-0** | Bosnia and Herzegovina | 39.2 | 59/23/17% |
+| Jul 1 | England | **2-0** | DR Congo | 47.5 | 73/17/10% |
+| Jul 1 | Belgium | **1-0** | Senegal | 27.6 | 40/29/31% |
+| Jul 2 | Argentina | **2-0** | Cape Verde | 55.2 | 85/12/4% |
+| Jul 2 | Spain | **1-0** | Austria | 40.9 | 62/22/16% |
+| Jul 2 | Switzerland | **1-0** | Algeria | 35.4 | 53/26/22% |
+| Jul 2 | Portugal | **1-0** | Croatia | 34.8 | 52/26/22% |
+| Jul 3 | Colombia | **2-0** | Ghana | 46.5 | 71/18/10% |
+| Jul 3 | Australia | **1-0** | Egypt | 29.1 | 42/28/29% |
+
+**Closest matches** (pick with most caution): Mexico vs Ecuador (39/29/32% — coin-flip), Belgium vs Senegal (40/29/31%), Australia vs Egypt (42/28/29%).
+
+## R32 TOP SCORER PICKS (select 4 for this round)
+
+Per-goal points in R32: **Forward=16, Midfielder=32, Defender/GK=64**
+
+| Rank | Player | Team | Pos | Odds | E[pts] |
+|------|--------|------|-----|------|--------|
+| 1 | **Jude Bellingham** | England | Midfielder | 51 | 52.8 |
+| 2 | **Jamal Musiala** | Germany | Midfielder | 66 | 49.0 |
+| 3 | **Christian Pulisic** | USA | Midfielder | 126 | 41.5 |
+| 4 | **Mikel Oyarzabal** | Spain | Forward | 19 | 33.4 |
+
+**Recommended 4:** Bellingham, Musiala, Pulisic, Oyarzabal  
+Same logic as group stage: 2× multiplier makes midfielders dominant picks. All four teams (England, Germany, USA, Spain) are heavy R32 favourites with high P(winning the match).
+
+---
+
+## KNOCKOUT ROUND PREDICTIONS (original pre-tournament reference)
 
 Points escalate: R32=90/60 → R16=135/90 → QF=180/120 → SF=225/150 → **Final=270/180**.  
 Bracket below assumes the most-likely group outcomes; actual R32 ties depend on real results.
