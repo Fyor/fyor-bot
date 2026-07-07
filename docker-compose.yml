@@ -1,0 +1,9 @@
+services:
+  media-bot:
+    build: .
+    container_name: discord-media-downloader
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
