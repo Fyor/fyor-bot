@@ -40,7 +40,6 @@ class ExtractError(enum.Enum):
     GEO_BLOCKED = "geo_blocked"
     UNSUPPORTED = "unsupported"       # not a recognized/extractable URL
     TOO_LARGE = "too_large"           # exceeded configured max size pre-check
-    LIVE_UNSUPPORTED = "live"         # ongoing live stream / space
     RATE_LIMITED = "rate_limited"
     UNKNOWN = "unknown"
 
@@ -88,7 +87,6 @@ _UNAVAILABLE_MARKERS = (
     "page not found",
 )
 _GEO_MARKERS = ("not available in your country", "geo restricted", "blocked it in your country")
-_LIVE_MARKERS = ("live event will begin", "this live event", "is currently live")
 _RATE_MARKERS = ("429", "too many requests")
 _TOO_LARGE_MARKERS = ("max-filesize", "file is larger than")
 
@@ -101,8 +99,6 @@ def _classify(exc: Exception) -> DownloadFailure:
         return DownloadFailure(ExtractError.UNAVAILABLE, str(exc))
     if any(m in msg for m in _GEO_MARKERS):
         return DownloadFailure(ExtractError.GEO_BLOCKED, str(exc))
-    if any(m in msg for m in _LIVE_MARKERS):
-        return DownloadFailure(ExtractError.LIVE_UNSUPPORTED, str(exc))
     if any(m in msg for m in _RATE_MARKERS):
         return DownloadFailure(ExtractError.RATE_LIMITED, str(exc))
     if any(m in msg for m in _TOO_LARGE_MARKERS):

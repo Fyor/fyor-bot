@@ -9,7 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import media, platforms
+from core import instagram_proxy, media, platforms
 from core.extractor import DownloadFailure, ExtractError, download
 
 logger = logging.getLogger("mediabot.download")
@@ -17,14 +17,13 @@ logger = logging.getLogger("mediabot.download")
 _ERROR_MESSAGES = {
     ExtractError.LOGIN_REQUIRED: (
         "That content only serves media to a logged-in session (private "
-        "account, story/highlight, or age-gated video). This bot only "
-        "reads publicly accessible content, so it can't fetch this one."
+        "account or age-gated video). This bot only reads publicly "
+        "accessible content, so it can't fetch this one."
     ),
     ExtractError.UNAVAILABLE: "That post looks like it's been deleted or made private.",
     ExtractError.GEO_BLOCKED: "That content is geo-restricted and isn't reachable from this bot's server region.",
     ExtractError.UNSUPPORTED: "I couldn't find any downloadable media at that link.",
     ExtractError.TOO_LARGE: "That source file is larger than this bot's safety ceiling -- too big to download.",
-    ExtractError.LIVE_UNSUPPORTED: "That's an ongoing live stream/space -- there's no finished file to download yet.",
     ExtractError.RATE_LIMITED: "The platform is rate-limiting requests right now. Try again in a bit.",
     ExtractError.UNKNOWN: "Something went wrong pulling that link. It may be a new URL format this bot doesn't know yet.",
 }
@@ -51,16 +50,21 @@ class DownloadCog(commands.Cog):
 
         await interaction.response.defer(thinking=True)
 
-        if match.requires_login_usually:
+        is_story_workaround = match.content_type in (platforms.ContentType.STORY, platforms.ContentType.HIGHLIGHT)
+        if is_story_workaround:
             await interaction.followup.send(
-                f"Heads up: {match.label} links usually require a logged-in session to "
-                "fetch, and this bot deliberately doesn't use one. Attempting anyway, "
-                "but it will likely fail."
+                f"{match.label.capitalize()} links aren't reachable through normal public "
+                "access -- trying a fallback proxy service instead. This is best-effort and "
+                "can fail if every proxy provider is currently down."
             )
 
         async with self._semaphore:
             try:
-                result = await download(clean_url, max_bytes=config.MAX_SOURCE_MB * 1024 * 1024)
+                if is_story_workaround:
+                    kind = "story" if match.content_type is platforms.ContentType.STORY else "highlight"
+                    result = await instagram_proxy.download(kind, match.identifier, label=match.content_type.value)
+                else:
+                    result = await download(clean_url, max_bytes=config.MAX_SOURCE_MB * 1024 * 1024)
             except DownloadFailure as fail:
                 await interaction.followup.send(_ERROR_MESSAGES.get(fail.kind, _ERROR_MESSAGES[ExtractError.UNKNOWN]))
                 return

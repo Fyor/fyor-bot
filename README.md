@@ -16,17 +16,21 @@ There is no bespoke scraper per platform in here. Instead:
 
 1. **`core/platforms.py`** matches the URL against known patterns for each
    platform and classifies the *content type* (video / short-form /
-   photo-post / story / highlight / live), purely with regex — no network
-   call. This lets the bot reject junk links instantly and warn upfront
-   about content types that need a login.
-2. **`core/extractor.py`** hands the URL to **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**,
-   which does the real extraction/scraping. yt-dlp maintains hundreds of
-   site-specific extractors and — critically — gets updated within days
-   whenever a platform changes its API/HTML, which a bespoke scraper written
-   once here never could keep up with on its own.
-3. **`core/media.py`** checks the downloaded file(s) against Discord's
+   photo-post / story / highlight), purely with regex — no network call.
+   This lets the bot reject junk links instantly and route Instagram
+   stories/highlights to the proxy workaround (below) instead of yt-dlp.
+2. **`core/extractor.py`** hands everything else to
+   **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, which does the real
+   extraction/scraping. yt-dlp maintains hundreds of site-specific
+   extractors and — critically — gets updated within days whenever a
+   platform changes its API/HTML, which a bespoke scraper written once here
+   never could keep up with on its own.
+3. **`core/instagram_proxy.py`** handles Instagram stories/highlights
+   specifically, since yt-dlp (like everything else with no login) can't
+   reach those. See **Instagram story/highlight workaround** below.
+4. **`core/media.py`** checks the downloaded file(s) against Discord's
    attachment size limit and, if needed, re-encodes with `ffmpeg` to fit.
-4. **`cogs/download.py`** is the Discord-facing slash command: it defers the
+5. **`cogs/download.py`** is the Discord-facing slash command: it defers the
    interaction (downloads can take longer than Discord's 3s ack window),
    runs the download in a bounded semaphore (so one bot can't get itself
    rate-limited/IP-banned by hammering a platform with concurrent requests),
@@ -61,27 +65,85 @@ keys of my own account, only what's public") and it has real consequences:
 |---|---|---|---|
 | YouTube | Standard video | Yes | |
 | YouTube | Shorts | Yes | |
-| YouTube | Live stream (in progress) | No — not until it ends | yt-dlp can't hand you a finished file for something still streaming; the bot reports this explicitly |
 | YouTube | Age-restricted / members-only | No | Requires a logged-in session; will fail with a login-required message |
 | TikTok | Standard video | Yes | |
 | TikTok | Photo-mode / slideshow post | Yes | Downloaded as multiple image files (+ audio track when present) |
-| TikTok | "Stories" (rare, regional feature) | Unreliable | Ephemeral and inconsistently exposed publicly; treat as best-effort |
 | Instagram | Public post / carousel | Yes | |
 | Instagram | Reel | Yes | |
 | Instagram | IGTV | Yes | |
-| Instagram | **Story** | **Usually no** | Instagram does not reliably serve story media to unauthenticated requests, even for fully public accounts |
-| Instagram | **Highlight** | **Usually no** | Same restriction as stories — highlights are stored stories |
-| Instagram | Private account (anything) | No | |
+| Instagram | **Story** | **Via proxy workaround** | See below — best-effort, not guaranteed |
+| Instagram | **Highlight** | **Via proxy workaround** | Same as story, when the proxy provider supports highlight lookup |
+| Instagram | Private account (anything) | No | Proxy providers can't get at these either -- they're scraping public-facing pages too |
 | X / Twitter | Tweet with video/GIF | Yes | |
-| X / Twitter | Spaces (audio) | No | Live-audio format isn't a downloadable finished file the same way, and access is often gated |
 
-The bot still *attempts* story/highlight/Spaces links (flagging the caveat
-in chat first) because yt-dlp occasionally succeeds anyway depending on the
-platform's mood that day — but don't expect it to work reliably. This is the
-one unavoidable ceiling of a "public access only, no personal login" bot:
-if a platform's servers refuse to hand the media to an anonymous request,
-no amount of client-side cleverness gets around that without authenticating
-as *someone's* account, which is exactly what you said you don't want.
+---
+
+## Instagram story/highlight workaround
+
+Instagram's story/highlight endpoint (`reels_media`, under the hood) only
+serves media to requests carrying an authenticated session cookie —
+**even for fully public accounts**. This isn't a yt-dlp limitation, it's
+how Instagram's backend is gated; tools like `instaloader` hit the same
+wall and require a login for this one content type specifically. There is
+no first-party unauthenticated path around it.
+
+**The workaround** (`core/instagram_proxy.py`): a handful of free,
+ad-supported "Instagram story viewer" websites do this same authenticated
+fetch *server-side*, using their own pool of logged-in accounts, and expose
+the resulting media as plain CDN links on a public page. The bot fetches
+that page and pulls the real `cdninstagram.com` / `fbcdn.net` URLs out of
+it with a regex, then downloads them directly. **You still never provide
+any login of your own** — the third-party site's backend is the one
+holding a session, not you or this bot.
+
+This is, by construction, the least stable part of the whole project:
+
+- These are unofficial, undocumented sites. They rename routes, add
+  captchas, rate-limit aggressively, or vanish entirely without notice.
+- `PROVIDERS` in `core/instagram_proxy.py` lists several (currently
+  `storiesig.info`, `imginn.com`, `anonyig.com`) tried in order, so one
+  going down doesn't kill the feature — but all of them going down at once
+  is entirely possible.
+- Extraction doesn't parse any provider's specific page structure/JSON
+  schema. It scans whatever comes back for literal Instagram CDN URLs,
+  which is the most change-resistant thing to key off (the markup around
+  it drifts constantly; the CDN URL shape itself does not).
+
+**This could not be verified live** while building it — the sandbox this
+was built in has no general internet access (only package registries are
+reachable), so none of the three providers above have been confirmed
+working against real Instagram content yet.
+
+**After deploying somewhere with real internet access, check it directly**
+without needing the whole bot running:
+
+```bash
+python -m core.instagram_proxy story <a public account's username>
+python -m core.instagram_proxy highlight <a highlight id, from a stories/highlights/<id> URL>
+```
+
+This prints every media URL each provider finds, or says none did. If all
+three come back empty:
+
+1. Open one of the provider sites in a real browser and confirm *it*
+   still works for that username manually — if the site itself is down or
+   redesigned, that explains it.
+2. If the site works in a browser but the script finds nothing, the page
+   is probably now rendering results via client-side JS the plain HTTP
+   fetch never executes. Open browser devtools → Network tab while using
+   the site, find the actual XHR/fetch request that returns the media
+   URLs, and add that as a new template (or swap in a different provider)
+   in `PROVIDERS`.
+3. Add a currently-working provider by appending a `Provider(...)` entry —
+   no other code needs to change, since extraction is the same generic
+   regex scan regardless of provider.
+
+If you'd rather not depend on these at all, the only fully-reliable
+alternative is providing a real Instagram session cookie (`cookiefile` in
+yt-dlp) — which is exactly the "keys of my own account" this project was
+built to avoid, so it isn't wired in here. It's a one-line change in
+`core/extractor.py`'s `_build_opts` (`opts["cookiefile"] = "..."`) if you
+ever decide that tradeoff is worth it for your own use.
 
 ---
 
@@ -123,6 +185,10 @@ as *someone's* account, which is exactly what you said you don't want.
   yt-dlp returns a multi-entry result for these, and the bot uploads up to
   10 files per Discord message (Discord's own attachment cap), batching
   into multiple messages if there are more.
+- **Instagram stories/highlights need a workaround, not just a login-required
+  error.** See the dedicated section above — this is the most fragile
+  integration in the project because it depends on third-party sites this
+  bot doesn't control.
 - **Legal/ToS considerations.** Downloading media from these platforms is
   against most of their Terms of Service even when the content is public.
   This bot is intended for personal, private-server use (e.g., saving a
@@ -238,19 +304,20 @@ journalctl -u media-bot -f   # tail logs
 
 ## Testing
 
-`tests/test_platforms.py` covers URL-to-platform/content-type
-classification with plain unit tests (no network involved):
+`tests/test_platforms.py` and `tests/test_instagram_proxy.py` cover
+URL-to-platform/content-type classification and the CDN-URL scraping regex
+with plain unit tests (no network involved):
 
 ```bash
 pip install pytest
 pytest tests/ -v
 ```
 
-**What unit tests can't cover:** actually calling yt-dlp against live
-TikTok/Instagram/YouTube/X requires real internet access to those domains.
-(This project was scaffolded in a sandboxed environment with egress
-restricted to package registries only, so live extraction could not be
-exercised there.) Once you've deployed this somewhere with normal internet
+**What unit tests can't cover:** actually calling yt-dlp or the Instagram
+proxy providers against live sites requires real internet access to those
+domains. (This project was built in a sandboxed environment with egress
+restricted to package registries only, so none of this could be exercised
+live there.) Once you've deployed this somewhere with normal internet
 access, sanity-check each platform once, e.g.:
 
 ```bash
@@ -259,12 +326,17 @@ yt-dlp -j "https://www.youtube.com/watch?v=<some public video>"
 yt-dlp -j "https://www.tiktok.com/@<user>/video/<id>"
 yt-dlp -j "https://www.instagram.com/reel/<shortcode>/"
 yt-dlp -j "https://x.com/<user>/status/<id>"
+
+# Instagram story/highlight proxy workaround -- see the dedicated section above
+python -m core.instagram_proxy story <username>
+python -m core.instagram_proxy highlight <highlight id>
 ```
 
-If any of those fail with an extractor error (not a login/availability
-error), it's almost always fixed by updating yt-dlp (see Maintenance).
-Then run `/download` with one link per platform in your actual server to
-confirm the whole path — Discord upload included.
+If the yt-dlp checks fail with an extractor error (not a login/availability
+error), it's almost always fixed by updating yt-dlp (see Maintenance). If
+the proxy checks come back empty, see the troubleshooting steps in the
+workaround section above. Then run `/download` with one link per platform
+in your actual server to confirm the whole path — Discord upload included.
 
 ---
 
@@ -300,14 +372,16 @@ something breaks) to update rather than pinning an exact version forever.
 ## Project layout
 
 ```
-bot.py                 entrypoint: intents, extension loading, command sync
-config.py               env var loading
+bot.py                    entrypoint: intents, extension loading, command sync
+config.py                 env var loading
 core/
-  platforms.py          URL -> (platform, content type) classification
-  extractor.py           async yt-dlp wrapper + error classification
-  media.py               ffprobe/ffmpeg size-compression fallback
+  platforms.py            URL -> (platform, content type) classification
+  extractor.py            async yt-dlp wrapper + error classification
+  instagram_proxy.py       story/highlight workaround via third-party proxies
+  media.py                 ffprobe/ffmpeg size-compression fallback
 cogs/
-  download.py            the /download slash command
+  download.py              the /download slash command
 tests/
-  test_platforms.py       classification unit tests
+  test_platforms.py        classification unit tests
+  test_instagram_proxy.py  CDN-URL scraping regex unit tests
 ```
